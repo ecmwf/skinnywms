@@ -19,7 +19,7 @@ The package is installed from PyPI with::
 
 
 System dependencies
-~~~~~~~~~~~~~~~~~~~
+--------------------
 
 The python module depends on the ECMWF *Magics* library
 that must be installed on the system and accessible as a shared library.
