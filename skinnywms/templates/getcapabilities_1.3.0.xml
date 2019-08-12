@@ -1,0 +1,148 @@
+<?xml version='1.0' encoding="UTF-8"?>
+<WMS_Capabilities version="1.3.0"  xmlns="http://www.opengis.net/wms"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd">
+  <Service>
+    <Name>WMS</Name>
+    <Title>{{ service.title }}</Title>
+
+    {% if service.abstract %}
+    <Abstract>{{ service.abstract }}</Abstract>
+    {% endif %}
+
+    {% if service.keywords %}
+    <KeywordList>
+      {% for k in service.keywords %}
+      <Keyword>{{ k }}</Keyword>
+      {% endfor %}
+    </KeywordList>
+    {% endif %}
+
+    <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple"
+		    xlink:href="{{ service.url }}"/>
+
+    {% if service.contact %}
+    <ContactInformation>
+      {% if service.contact.person %}
+      <ContactPersonPrimary>
+        <ContactPerson>{{ service.contact.person.name }}</ContactPerson>
+        <ContactOrganization>{{ service.contact.person.organization }}</ContactOrganization>
+      </ContactPersonPrimary>
+      {% endif %}
+
+      <ContactPosition/>
+      <ContactAddress>
+        <AddressType/>
+        <Address/>
+        <City/>
+        <StateOrProvince/>
+        <PostCode/>
+        <Country/>
+      </ContactAddress>
+      <ContactVoiceTelephone/>
+      <ContactFacsimileTelephone/>
+      <ContactElectronicMailAddress>{{ service.contact.email }}</ContactElectronicMailAddress>
+    </ContactInformation>
+    {% endif %}
+
+    {% if service.fees %}
+    <Fees>{{ service.fees }}</Fees>
+    {% endif %}
+
+    {% if service.access_constraints %}
+    <AccessConstraints>{{ service.access_constraints }}</AccessConstraints>
+    {% endif %}
+  </Service>
+
+  <Capability>
+    <Request>
+
+      <GetCapabilities>
+        <Format>text/xml</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple"
+                xlink:href="{{ service.url }}" />
+            </Get>
+          </HTTP>
+        </DCPType>
+      </GetCapabilities>
+
+      <GetMap>
+        <Format>image/png</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple"
+                xlink:href="{{ service.url }}"/>
+            </Get>
+          </HTTP>
+        </DCPType>
+      </GetMap>
+    </Request>
+
+    <Exception>
+       <Format>text/xml</Format>
+    </Exception>
+
+    <Layer>
+      <Title>All layers</Title>
+
+      {% for crs in crss %}
+      <CRS>{{ crs.name }}</CRS>
+      {% endfor %}
+
+      {% if geographic_bounding_box %}
+      <EX_GeographicBoundingBox>
+        <westBoundLongitude>{{ geographic_bounding_box.w_lon }}</westBoundLongitude>
+        <eastBoundLongitude>{{ geographic_bounding_box.e_lon }}</eastBoundLongitude>
+        <southBoundLatitude>{{ geographic_bounding_box.s_lat }}</southBoundLatitude>
+        <northBoundLatitude>{{ geographic_bounding_box.n_lat }}</northBoundLatitude>
+      </EX_GeographicBoundingBox>
+      {% endif %}
+
+      {% for crs in crss %}
+      <BoundingBox CRS="{{ crs.name }}" minx="{{ crs.s_lat }}" miny="{{ crs.w_lon }}" maxx="{{ crs.n_lat }}" maxy="{{ crs.e_lon }}"/>
+      {% endfor %}
+
+      {% for l in layers %}
+      <Layer{% if l.queryable %} queryable="1"{% endif %}>
+        <Name>{{ l.name }}</Name>
+	{% if l.title %}
+        <Title>{{ l.title }}</Title>
+	{% endif %}
+	{% if l.description %}
+        <Abstract>{{ l.description }}</Abstract>
+	{% endif %}
+	{% if l.keywords %}
+        <KeywordList>
+          {% for k in l.keywords %}
+	  <Keyword>{{ k }}</Keyword>
+          {% endfor %}
+        </KeywordList>
+	{% endif %}
+
+        {% for v in l.dimensions %}
+        <Dimension name="{{ v.name }}" default="{{ v.default }}" units="{{ v.units }}"  multipleValues="0" nearestValue="0">{{ v.extent }}</Dimension>
+        {% endfor %}
+
+        {% for s in l.styles %}
+        <Style>
+          <Name>{{ s.name }}</Name>
+          <Title>{{ s.title }}</Title>
+          <Abstract>{{ s.description }}</Abstract>
+	  
+          <LegendURL width="500" height="125">
+            <Format>image/png</Format>
+            <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="{{ service.url }}?request=GetLegendGraphic&amp;layer={{ l.name }}&amp;style={{ s.name }}&amp;width=500&amp;height=125"/>
+          </LegendURL>
+	  
+        </Style>
+        {% endfor %}
+      </Layer>
+      {% endfor %}
+    </Layer>
+  </Capability>
+</WMS_Capabilities>
