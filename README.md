@@ -1,6 +1,6 @@
 
 
-The skinny WMS is a small WMS server that will help you to visulaise your NetCDF and Grib Data
+The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data
 
 Features:
 - 
