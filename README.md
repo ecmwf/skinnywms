@@ -1,14 +1,29 @@
 
+The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data.
+The principle is simple: skinny will browse the directory, or the single file passed as argument, and try to inpterpret each NetCDF or GRIB files. From the metadata, it will be build the getCapabilities document, and find a relevant styles to plot the data. 
 
-The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data
 
 Features:
-- 
+---------
+SkinnyWMS implements 3 of the WMS endpoints:
+- **getCapabilities**: Discover the data, build an XML Document presenting each identified parameter in the file(s) as a layer with the list of their predefined styles. (There is always a default style)  
+- **getMap** : Return the  selected layer suing the selected style.
+- **getLegendGraphic**: Return the legend.
 
-Limitations:
 
-- development stage: **Alpha**,
+Usage:
+-----
+There are 2 ways to start using it, they both will start a small Flask server. 
+Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
+* The demo:
+```
+$ python demo.py --path /path/to/mydata 
+```
+* The command line:
+```
+$ skinny-wms --path /path/to/mydata
+```
 
 Installation
 ------------
@@ -25,10 +40,21 @@ If you have *Magics* already installed you can use pip::
 
     $ pip install skinnywms
     
-Usage
+Limitations:
+------------
+- SkinnyWMS will perform better on well formatted and documented NetCDF and GRIB.
+
+- development stage: **Alpha**,
+
+    
+Add your own styles:
+--------------------
+
+Multi-process
+-------------
+
+Cache
 -----
-
-
 
 
 How to install Magics
