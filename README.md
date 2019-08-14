@@ -67,6 +67,7 @@ Some Linux distributions ship a binary version that may be installed with the st
 As an alternative you may install the official source distribution
 by following the instructions at
 https://software.ecmwf.int/magics/Installation+Guide
+Magics is available on github https://github.com/ecmwf/magics
 
 Note that *Magics* support for the Windows operating system is experimental.
 
@@ -80,6 +81,9 @@ The main repository is hosted on GitHub,
 testing, bug reports and contributions are highly welcomed and appreciated:
 
 https://github.com/ecmwf/skinnywms
+https://github.com/ecmwf/magics-python
+https://github.com/ecmwf/magics
+
 
 Please see the CONTRIBUTING.rst document for the best way to help.
 
