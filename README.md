@@ -13,20 +13,30 @@ Limitations:
 Installation
 ------------
 
-The package is installed from PyPI with::
+SkinnyWMS  depends on the ECMWF *Magics* library.
 
-    $ pip install skinny-wms
+If you do not have *Magics* installed on your platform, skinnywms is available on conda forge https://conda-forge.org/::
+
+    $ conda config --add channels conda-forge
+    $ conda install skinnywms
+    
+
+If you have *Magics* already installed you can use pip::
+
+    $ pip install skinnywms
+    
+Usage
+-----
 
 
-System dependencies
---------------------
 
-The python module depends on the ECMWF *Magics* library
+
+How to install Magics
+-----------------------
+
 that must be installed on the system and accessible as a shared library.
 Some Linux distributions ship a binary version that may be installed with the standard package manager.
-On Ubuntu 18.04 use the command::
 
-    $ sudo apt-get install libmagplus
 
 As an alternative you may install the official source distribution
 by following the instructions at
@@ -34,15 +44,7 @@ https://software.ecmwf.int/magics/Installation+Guide
 
 Note that *Magics* support for the Windows operating system is experimental.
 
-You may run a simple selfcheck command to ensure that your system is set up correctly::
 
-    $ python -m Magics selfcheck
-    Found: Magics '4.1.2'.
-    Your system is ready.
-
-
-Usage
------
 
 
 Contributing
@@ -51,7 +53,7 @@ Contributing
 The main repository is hosted on GitHub,
 testing, bug reports and contributions are highly welcomed and appreciated:
 
-https://github.com/sylvielamythepaut/skinny-wms
+https://github.com/ecmwf/skinnywms
 
 Please see the CONTRIBUTING.rst document for the best way to help.
 
