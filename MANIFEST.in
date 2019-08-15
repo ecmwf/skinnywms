@@ -1,5 +1,4 @@
 
 include skinnywms/templates/*
-include testdata/*
 include demo.py
 include LICENSE.txt
