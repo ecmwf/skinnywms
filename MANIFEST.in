@@ -1,3 +1,4 @@
 
 include skinnywms/templates/*
+include testdata/*
 include LICENSE.txt
