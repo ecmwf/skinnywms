@@ -1,48 +1,77 @@
 
+The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data.
+The principle is simple: skinny will browse the directory, or the single file passed as argument, and try to inpterpret each NetCDF or GRIB files. From the metadata, it will be build the getCapabilities document, and find a relevant styles to plot the data. 
 
-The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data
 
 Features:
-- 
+---------
+SkinnyWMS implements 3 of the WMS endpoints:
+- **getCapabilities**: Discover the data, build an XML Document presenting each identified parameter in the file(s) as a layer with the list of their predefined styles. (There is always a default style)  
+- **getMap** : Return the  selected layer suing the selected style.
+- **getLegendGraphic**: Return the legend.
 
-Limitations:
 
-- development stage: **Alpha**,
+Usage:
+-----
+There are 2 ways to start using it, they both will start a small Flask server. 
+Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
+* The demo:
+```
+$ python demo.py --path /path/to/mydata 
+```
+* The command line:
+```
+$ skinny-wms --path /path/to/mydata
+```
 
 Installation
 ------------
 
-The package is installed from PyPI with::
+SkinnyWMS  depends on the ECMWF *Magics* library.
 
-    $ pip install skinny-wms
+If you do not have *Magics* installed on your platform, skinnywms is available on conda forge https://conda-forge.org/::
 
+    $ conda config --add channels conda-forge
+    $ conda install skinnywms
+    
 
-System dependencies
+If you have *Magics* already installed you can use pip::
+
+    $ pip install skinnywms
+    
+Limitations:
+------------
+- SkinnyWMS will perform better on well formatted and documented NetCDF and GRIB.
+
+- development stage: **Alpha**,
+
+    
+Add your own styles:
 --------------------
 
-The python module depends on the ECMWF *Magics* library
+Multi-process
+-------------
+
+Cache
+-----
+
+
+How to install Magics
+-----------------------
+
 that must be installed on the system and accessible as a shared library.
 Some Linux distributions ship a binary version that may be installed with the standard package manager.
-On Ubuntu 18.04 use the command::
 
-    $ sudo apt-get install libmagplus
 
 As an alternative you may install the official source distribution
 by following the instructions at
 https://software.ecmwf.int/magics/Installation+Guide
+Magics is available on github https://github.com/ecmwf/magics
 
 Note that *Magics* support for the Windows operating system is experimental.
 
-You may run a simple selfcheck command to ensure that your system is set up correctly::
 
-    $ python -m Magics selfcheck
-    Found: Magics '4.1.2'.
-    Your system is ready.
-
-
-Usage
------
 
 
 Contributing
@@ -51,7 +80,10 @@ Contributing
 The main repository is hosted on GitHub,
 testing, bug reports and contributions are highly welcomed and appreciated:
 
-https://github.com/sylvielamythepaut/skinny-wms
+https://github.com/ecmwf/skinnywms
+https://github.com/ecmwf/magics-python
+https://github.com/ecmwf/magics
+
 
 Please see the CONTRIBUTING.rst document for the best way to help.
 
