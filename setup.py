@@ -25,14 +25,17 @@ def read(fname):
     return io.open(file_path, encoding='utf-8').read()
 
 
-version = '0.1.0'
+version = '0.1.1'
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setuptools.setup(
     name='skinnywms',
     version=version,
     description='A light WMS server to visualise your NetCDf and Grib data',
-    long_description=read('README.md'),
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author='European Centre for Medium-Range Weather Forecasts (ECMWF)',
     author_email='software.support@ecmwf.int',
     license='Apache License Version 2.0',
