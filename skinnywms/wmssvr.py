@@ -20,7 +20,6 @@ from .plot.magics import Plotter, Styler
 application = Flask(__name__)
 
 demo = os.path.join(os.path.dirname(__file__),
-                    '..',
                     'testdata',
                     'sfc.grib')
 
@@ -32,16 +31,21 @@ parser.add_argument('--path',
 parser.add_argument('--style',
                     default='',
                     help='Path to a directory where to find the styles')
-
+parser.add_argument('-f',
+                    default=demo,
+                    help='Path to a GRIB or NetCDF file, or a directory containing GRIB and/or NetCDF files.')
 
 args = parser.parse_args()
 
 if args.style != '':
     os.environ["MAGICS_STYLE_PATH"] = args.style+ ":ecmwf"
+
 server = WMSServer(
     Availability(args.path),
     Plotter(),
     Styler())
+
+
 
 
 @application.route('/wms', methods=['GET'])
