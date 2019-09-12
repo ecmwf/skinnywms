@@ -25,15 +25,12 @@ demo = os.path.join(os.path.dirname(__file__),
 
 parser = argparse.ArgumentParser(description='Simple WMS server')
 
-parser.add_argument('--path',
+parser.add_argument('-f', '--path',
                     default=demo,
                     help='Path to a GRIB or NetCDF file, or a directory containing GRIB and/or NetCDF files.')
 parser.add_argument('--style',
                     default='',
                     help='Path to a directory where to find the styles')
-parser.add_argument('-f',
-                    default=demo,
-                    help='Path to a GRIB or NetCDF file, or a directory containing GRIB and/or NetCDF files.')
 
 args = parser.parse_args()
 
