@@ -65,7 +65,7 @@
     }).then(function(text) {
       let layerNames = [];
       let $xml = $($.parseXML(text));
-      $xml.find('Layer > Name').each(function() {
+      $xml.find('Layer > Title').each(function() {
         if ($(this).text() != 'background'){
           layerNames.push($(this).text());
         }
