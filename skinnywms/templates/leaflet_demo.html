@@ -42,8 +42,8 @@
 
       let layers = {};
       layerNames.forEach(function(name) {
-        layers[name] = L.tileLayer.wms('/wms?', {
-          layers: name,
+        layers[name["title"]] = L.tileLayer.wms('/wms?', {
+          layers: name["name"],
           format: 'image/png',
           transparent: 'TRUE',
           attribution: '',
@@ -65,9 +65,11 @@
     }).then(function(text) {
       let layerNames = [];
       let $xml = $($.parseXML(text));
-      $xml.find('Layer > Title').each(function() {
+      $xml.find('Layer').each(function() {
+        title = $(this).find('> Title').text()
+        name = $(this).find('> Name').text()
         if ($(this).text() != 'background'){
-          layerNames.push($(this).text());
+          layerNames.push({ name : name, title : title} );
         }
       });
       plotLayers(layerNames);
