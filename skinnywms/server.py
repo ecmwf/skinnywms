@@ -17,6 +17,16 @@ from skinnywms import errors, protocol
 LOG = logging.getLogger(__name__)
 
 
+def revert_bbox(bbox):
+    minx, miny, maxx, maxy = bbox
+    return [ miny, minx, maxy, maxx]
+
+
+bounding_box = {
+    "1.3.0_EPSG:4326" : revert_bbox
+}
+
+
 class TmpFile:
 
     def __init__(self):
@@ -177,6 +187,12 @@ class WMSServer:
                 layer = self.plotter.layer(name)
 
             layer_objs.append(layer)
+
+        # Interpret the BBox
+
+        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x) )(bbox)
+
+        LOG.debug("->{}_{}".format(version, crs))
 
         path = self.plotter.plot(self,
                                  output,

@@ -150,6 +150,7 @@ class Plotter(datatypes.Plotter):
              ):
         try:
             crs = _CRSS[crs]
+
         except KeyError:
             raise ValueError("Unsupported CRS '{}'".format(crs))
 
@@ -159,7 +160,6 @@ class Plotter(datatypes.Plotter):
             raise errors.InvalidFormat(format)
 
         output_fname = output.target(magics_format)
-        print("OUTPUT", output_fname)
         path, _ = os.path.splitext(output_fname)
 
         with LOCK:
@@ -176,10 +176,10 @@ class Plotter(datatypes.Plotter):
                              output_width=width,
                              output_name=path),
                 macro.mmap(subpage_map_projection=crs.name,
-                           subpage_lower_left_latitude=min_x,
-                           subpage_lower_left_longitude=min_y,
-                           subpage_upper_right_latitude=max_x,
-                           subpage_upper_right_longitude=max_y,
+                           subpage_lower_left_latitude=min_y,
+                           subpage_lower_left_longitude=min_x,
+                           subpage_upper_right_latitude=max_y,
+                           subpage_upper_right_longitude=max_x,
                            subpage_frame='off',
                            page_x_length=width_cm,
                            page_y_length=height_cm,
@@ -238,7 +238,6 @@ class Plotter(datatypes.Plotter):
             raise errors.InvalidFormat(format)
 
         output_fname = output.target(magics_format)
-        print(output_fname)
         path, _ = os.path.splitext(output_fname)
 
         with LOCK:
