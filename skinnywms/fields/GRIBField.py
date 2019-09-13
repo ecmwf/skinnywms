@@ -25,10 +25,10 @@ class GRIBField(datatypes.Field):
 
         if grib.levtype == 'sfc':
             self.name = grib.shortName
-            self.title = grib.shortName
+            self.title = grib.name
         else:
             self.name = "%s_%s" % (grib.shortName, grib.levelist)
-            self.title = "%s at %s" % (grib.shortName, grib.levelist)
+            self.title = "%s at %s" % (grib.name, grib.levelist)
 
         key = 'style.grib.%s' % (self.name, )
 
