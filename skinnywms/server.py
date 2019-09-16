@@ -10,6 +10,7 @@ import logging
 import os
 import tempfile
 
+import pyproj
 
 from skinnywms import errors, protocol
 
@@ -188,8 +189,18 @@ class WMSServer:
 
             layer_objs.append(layer)
 
-        # Interpret the BBox
 
+        # Convert the BBox to EPSG:4326, if needed
+        if crs != "EPSG:4326":
+            epsg4326 = pyproj.Proj(init="EPSG:4326")
+            cur_crs = pyproj.Proj(init=crs)
+            bbox = pyproj.transform(
+                cur_crs, epsg4326, bbox[0], bbox[1],
+            ) + pyproj.transform(
+                cur_crs, epsg4326, bbox[2], bbox[3],
+            )
+
+        # Interpret the BBox
         bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x) )(bbox)
 
         LOG.debug("->{}_{}".format(version, crs))
