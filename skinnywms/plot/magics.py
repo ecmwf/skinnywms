@@ -169,6 +169,10 @@ class Plotter(datatypes.Plotter):
             height_cm = height / 40.
             macro.silent()
 
+            coordinates_system = {
+                "EPSG:4326" : "latlon"
+            }
+
             args = [
                 macro.output(output_formats=[magics_format],
                              output_name_first_page_number='off',
@@ -180,6 +184,7 @@ class Plotter(datatypes.Plotter):
                            subpage_lower_left_longitude=min_x,
                            subpage_upper_right_latitude=max_y,
                            subpage_upper_right_longitude=max_x,
+                           subpage_coordinates_system = coordinates_system.get(crs.name, "projection"), 
                            subpage_frame='off',
                            page_x_length=width_cm,
                            page_y_length=height_cm,
