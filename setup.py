@@ -45,6 +45,7 @@ setuptools.setup(
     install_requires=[
         'magics',
         'Flask',
+        'pyproj',
     ],
 
     entry_points={
