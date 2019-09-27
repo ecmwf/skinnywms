@@ -222,7 +222,8 @@ GRID_TYPES = {
     "regular_ll": RegularLL(),
     "regular_gg": RegularGG(),
     "reduced_ll": ReducedLL(),
-    "reduced_gg": ReducedGG()
+    "reduced_gg": ReducedGG(),
+    "rotated_ll": RegularLL # For now, we do not  make use of this information .
 }
 
 
