@@ -110,7 +110,7 @@
 
         var title = $(this).find('> Title').text()
         var name = $(this).find('> Name').text()
-        var times = parse_time($(this).find('> Dimension[name="time"]').text());
+        var times = parse_time_list($(this).find('> Dimension[name="time"]').text());
         layerNames.push({
             title: title,
             name: name,
@@ -120,7 +120,11 @@
       plotLayers(layerNames);
     });
 
-    function parse_time(timestring) {
+    // This function parse a list of ISO8601 string only, with some limitations:
+    // each element of the list must be a single time string (YYYY-mm-ddTHH:MM:SSZ)
+    // or an interval YYYY-mm-ddTHH:MM:SSZ/YYYY-mm-ddTHH:MM:SSZ/PTX[HM], where
+    // X is the number and the unit can be H or M only.
+    function parse_time_list(timestring) {
         if (timestring == "")
             return [];
 
