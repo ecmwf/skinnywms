@@ -75,7 +75,7 @@
 
         var title = $(this).find('> Title').text()
         var name = $(this).find('> Name').text()
-        var times = $(this).find('> Dimension[name="time"]').text().split(",");
+        var times = parse_time($(this).find('> Dimension[name="time"]').text());
         if (times.length > 0 && times[0] != "") {
             times.forEach(function(time) {
                 layerNames.push({ name: name, title: title + " @ " + time, time: time });
@@ -86,6 +86,32 @@
       });
       plotLayers(layerNames);
     });
+
+    function parse_time(timestring) {
+        if (timestring == "")
+            return [];
+
+        var items = timestring.split(",");
+        var times = [];
+        items.forEach(function(item) {
+            if (item.slice(-1) == "Z") {
+                times.push(item);
+            } else {
+                var arr = item.split("/");
+                var start = new Date(arr[0]);
+                var end = new Date(arr[1]);
+                var step_value = parseInt(arr[2].replace(/PT([0-9]+)[HM]/, '$1'));
+                var step_unit = arr[2].slice(-1);
+                if (step_unit == "H") {
+                    step_value = step_value * 60
+                };
+                for (var t = start; t <= end; t = new Date(t.getTime() + step_value * 60000)) {
+                    times.push(t.toISOString());
+                }
+            }
+        });
+        return times;
+    }
   </script>
 </body>
 </html>
