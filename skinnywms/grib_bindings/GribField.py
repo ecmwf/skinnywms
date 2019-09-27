@@ -280,8 +280,16 @@ class GribField(object):
         self._delete = grib_handle_delete
 
         self._values = None
-        self._grid = GRID_TYPES[self.gridType]
-        self._levtype = LEVEL_TYPES[self.levtype]
+
+        try:
+            self._grid = GRID_TYPES[self.gridType]
+        except KeyError:
+            raise Exception("Unsupported grid type '{}' in grib {}".format(self.gridType, path))
+        
+        try:
+            self._levtype = LEVEL_TYPES[self.levtype]
+        except KeyError:
+            raise Exception("Unsupported level type '{}' in grib {}".format(self.levtype, path))
 
     @property
     def values(self):
