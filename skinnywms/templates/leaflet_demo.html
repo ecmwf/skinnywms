@@ -76,7 +76,6 @@
         var title = $(this).find('> Title').text()
         var name = $(this).find('> Name').text()
         var times = $(this).find('> Dimension[name="time"]').text().split(",");
-        console.log(name, times);
         if (times.length > 0 && times[0] != "") {
             times.forEach(function(time) {
                 layerNames.push({ name: name, title: title + " @ " + time, time: time });
