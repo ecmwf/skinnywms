@@ -17,6 +17,8 @@
   <div id="menu">
       <label for="layer-selection">Layer</label><select id="layer-selection"></select>
       <label for="time-selection">Time</label><select id="time-selection" disabled></select>
+      <button id="prev-time" disabled>Prev</button>
+      <button id="next-time" disabled>Next</button>
   </div>
   <div id="mapid"></div>
   <style>
@@ -82,18 +84,40 @@
           if (time) {
               options.time = time;
               $(this).prop("disabled", false);
+              $("#next-time, #prev-time").prop("disabled", false);
           } else {
               $(this).prop("disabled", true);
+              $("#next-time, #prev-time").prop("disabled", true);
           }
           current_layer = L.tileLayer.wms("/wms?", options);
           current_layer.addTo(mymap);
       });
+      $("#prev-time").on("click", function() {
+          var cur = $("#time-selection option:selected");
+          var prev = $("#time-selection option:selected").prev();
+          if (prev.length == 0)
+              prev = $("#time-selection option:selected").last();
+
+          cur.removeAttr('selected');
+          prev.attr('selected', 'selected');
+          $("#time-selection").change();
+      });
+      $("#next-time").on("click", function() {
+          var cur = $("#time-selection option:selected");
+          var next = $("#time-selection option:selected").next();
+          if (next.length == 0)
+              next = $("#time-selection option:selected").first();
+
+          cur.removeAttr('selected');
+          next.attr('selected', 'selected');
+          $("#time-selection").change();
+      });
+
 
       let baseMaps = {
         'background': background
       };
 
-      // L.control.layers(baseMaps, layers).addTo(mymap);
       L.control.layers(baseMaps).addTo(mymap);
 
       L.control.scale().addTo(mymap);
