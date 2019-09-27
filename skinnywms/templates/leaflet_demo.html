@@ -14,6 +14,12 @@
     crossorigin="anonymous"></script>
 </head>
 <body>
+  <div id="menu">
+      <select id="layer-selection">
+      </select>
+      <select id="time-selection">
+      </select>
+  </div>
   <div id="mapid"></div>
   <style>
     html, body {
@@ -40,26 +46,45 @@
           version: '1.3.0'
         }).addTo(mymap);
 
-      let layers = {};
-      layerNames.forEach(function(name) {
-        var options = {
-          layers: name["name"],
-          format: 'image/png',
-          transparent: 'TRUE',
-          attribution: '',
-          version: '1.3.0',
-        };
-        if ("time" in name) {
-            options.time = name.time;
-        }
-        layers[name["title"]] = L.tileLayer.wms('/wms?', options);
+      let current_layer = null;
+
+      layerNames.forEach(function(layer) {
+        var select = $("<option value='" + layer.name + "'>" + layer.title + "</option>");
+        select.data("layer", layer);
+        $("#layer-selection").append(select);
+      });
+
+      $("#layer-selection").on("change", function() {
+          $("#time-selection").empty();
+          $("#layer-selection option:selected").data("layer").times.forEach(function(time) {
+              $("#time-selection").append("<option value='" + time + "'>" + time + "</option>");
+          });
+          $("#time-selection").change();
+      });
+      $("#time-selection").on("change", function() {
+          var time = $("#time-selection option:selected").val();
+          var layer = $("#layer-selection option:selected").data("layer");
+          if (current_layer)
+              mymap.removeLayer(current_layer);
+          var options = {
+              layers: layer.name,
+              format: 'image/png',
+              transparent: 'TRUE',
+              attribution: '',
+              version: '1.3.0'
+          }
+          if (time)
+              options.time = time;
+          current_layer = L.tileLayer.wms("/wms?", options);
+          current_layer.addTo(mymap);
       });
 
       let baseMaps = {
         'background': background
       };
 
-      L.control.layers(baseMaps, layers).addTo(mymap);
+      // L.control.layers(baseMaps, layers).addTo(mymap);
+      L.control.layers(baseMaps).addTo(mymap);
 
       L.control.scale().addTo(mymap);
     };
@@ -76,13 +101,11 @@
         var title = $(this).find('> Title').text()
         var name = $(this).find('> Name').text()
         var times = parse_time($(this).find('> Dimension[name="time"]').text());
-        if (times.length > 0 && times[0] != "") {
-            times.forEach(function(time) {
-                layerNames.push({ name: name, title: title + " @ " + time, time: time });
-            });
-        } else {
-          layerNames.push({ name : name, title : title} );
-        }
+        layerNames.push({
+            title: title,
+            name: name,
+            times: times
+        });
       });
       plotLayers(layerNames);
     });
@@ -106,7 +129,8 @@
                     step_value = step_value * 60
                 };
                 for (var t = start; t <= end; t = new Date(t.getTime() + step_value * 60000)) {
-                    times.push(t.toISOString());
+                    var s = t.toISOString().replace(/\.000Z$/, "Z");
+                    times.push(s);
                 }
             }
         });
