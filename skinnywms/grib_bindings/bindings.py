@@ -18,10 +18,13 @@ from functools import partial
 lib = ctypes.util.find_library("eccodes")
 
 ecmwf_lib = os.path.join(os.environ.get("ECCODES_LIB_DIR",""), "libeccodes.so")
-
+ecmwf_lib_mac = os.path.join(
+    os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.dylib")
 
 if lib is None:
-    for lib in ('/opt/ecmwf/eccodes/lib/libeccodes.so', '/usr/local/lib/libeccodes.dylib', ecmwf_lib):
+    for lib in ('/opt/ecmwf/eccodes/lib/libeccodes.so',
+                '/usr/local/lib/libeccodes.dylib',
+                ecmwf_lib, ecmwf_lib_mac):
         if os.path.exists(lib):
             break
 
@@ -30,7 +33,7 @@ libc = ctypes.CDLL(ctypes.util.find_library("c"))
 
 
 class FILE(ctypes.Structure):
-    pass
+    pass 
 
 
 FILE_p = ctypes.POINTER(FILE)
