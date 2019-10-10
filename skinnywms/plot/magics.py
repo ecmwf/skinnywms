@@ -155,12 +155,14 @@ class Plotter(datatypes.Plotter):
             lon_vertical = float(crs.split(':')[2])
         elif crs.startswith('EPSG:32761:'):
             crs_name = "polar_south"
-            lon_vertical = float(crs.split(':')[2])
+            lon_vertical = float(crs.split(':')[2]) 
+        elif crs == 'EPSG:32761':
+            crs_name = 'EPSG:32761'
         else:
             try:
                 crs = _CRSS[crs]
                 crs_name = crs.name
-            except KeyError:
+            except KeyError:               
                 raise ValueError("Unsupported CRS '{}'".format(crs))
 
         try:
