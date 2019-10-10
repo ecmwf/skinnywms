@@ -148,11 +148,22 @@ class Plotter(datatypes.Plotter):
              exceptions=None,
              time=None,
              ):
-        try:
-            crs = _CRSS[crs]
 
-        except KeyError:
-            raise ValueError("Unsupported CRS '{}'".format(crs))
+        lon_vertical = 0.0
+        if crs.startswith('EPSG:32661:'):
+            crs_name = "polar_north"
+            lon_vertical = float(crs.split(':')[2])
+        elif crs.startswith('EPSG:32761:'):
+            crs_name = "polar_south"
+            lon_vertical = float(crs.split(':')[2]) 
+        elif crs == 'EPSG:32761':
+            crs_name = 'EPSG:32761'
+        else:
+            try:
+                crs = _CRSS[crs]
+                crs_name = crs.name
+            except KeyError:               
+                raise ValueError("Unsupported CRS '{}'".format(crs))
 
         try:
             magics_format = MAGICS_OUTPUT_TYPES[format]
@@ -173,30 +184,45 @@ class Plotter(datatypes.Plotter):
                 "EPSG:4326" : "latlon"
             }
 
+            map_params = {
+                'subpage_map_projection': crs_name,
+                'subpage_lower_left_latitude': min_y,
+                'subpage_lower_left_longitude': min_x,
+                'subpage_upper_right_latitude': max_y,
+                'subpage_upper_right_longitude': max_x,
+                'subpage_coordinates_system':
+                    coordinates_system.get(crs_name, "projection"),
+                'subpage_frame': 'off',
+                'page_x_length': width_cm,
+                'page_y_length': height_cm,
+                'super_page_x_length': width_cm,
+                'super_page_y_length': height_cm,
+                'subpage_x_length': width_cm,
+                'subpage_y_length': height_cm,
+                'subpage_x_position': 0.,
+                'subpage_y_position': 0.,
+                'output_width': width,
+                'page_frame': 'off',
+                'page_id_line': 'off'}
+
+            # add extra settings for polar stereographic projection when
+            # vertical longitude is not 0
+            if crs_name in ['polar_north', 'polar_south']:
+                map_params['subpage_map_vertical_longitude'] = lon_vertical
+
+            if crs_name in ['polar_north']:
+                map_params['subpage_map_true_scale_north'] = 90
+
+            if crs_name in ['polar_south']:
+                map_params['subpage_map_true_scale_south'] = -90
+
             args = [
                 macro.output(output_formats=[magics_format],
                              output_name_first_page_number='off',
                              output_cairo_transparent_background=transparent,
                              output_width=width,
                              output_name=path),
-                macro.mmap(subpage_map_projection=crs.name,
-                           subpage_lower_left_latitude=min_y,
-                           subpage_lower_left_longitude=min_x,
-                           subpage_upper_right_latitude=max_y,
-                           subpage_upper_right_longitude=max_x,
-                           subpage_coordinates_system = coordinates_system.get(crs.name, "projection"), 
-                           subpage_frame='off',
-                           page_x_length=width_cm,
-                           page_y_length=height_cm,
-                           super_page_x_length=width_cm,
-                           super_page_y_length=height_cm,
-                           subpage_x_length=width_cm,
-                           subpage_y_length=height_cm,
-                           subpage_x_position=0.,
-                           subpage_y_position=0.,
-                           output_width=width,
-                           page_frame='off',
-                           page_id_line='off',),
+                macro.mmap(**map_params),
             ]
 
             for layer, style in zip(layers, styles):
