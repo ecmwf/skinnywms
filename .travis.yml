@@ -14,8 +14,13 @@ matrix:
   include:
     - os: linux
       dist: xenial
+      addons:
+        apt:
+          packages:
+            - libpango1.0-dev
       env:
         MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
+        PROJ4_PATH=~/miniconda3
 
 env:
   global:
