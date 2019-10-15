@@ -66,3 +66,12 @@ install:
 
 script:
   - pytest
+
+
+deploy:
+  provider: pypi
+  user: "__token__"
+  password: kAEYyVIe7bEw6ChSJTRIwAnk49s8YK85QL9cCT59Gp9zhL29ctPCBtHqWf6Rfisk2d836FhTuEvM13kVYmqJFcjzfvA6sJK8kOeIyJyUtul6sJ1YvIqfs9bu08CANoi8Tvmhsb/slaMdhgGXn3W3ZUPyQXGd7KuMkNrsiwd0LnfLtYzaFCzQoQLFcrGyS7m5rkbjPsBZ2QzGX0vD88lFIkFxY2/3r6dhG4d+XHXwX8gD6Ip6kzgtze4N6qfFYo7Mryx1K/z500edJVQAfX3do46dXiXcgctZwuUsk5YtnEsTLTj9nZXrj1EWmzxqOaH04UHgEu2AJqN9jy3yMi5+QYrAq0552CU0VcKyMxrEDnwwRooX5rX31sqMWiyy9KffSldzRufl90uWPXoFNqyGcF/vJcNpCeTn8wH3vd02icqmYsHAi9Y2aSo9W4HIso75XFW6LLM7PEikXz/juxbYyTUlw0bOZzcHgHbHSbmJNu3mkWz8bnvej0QKDJMwY8iyKXcNifditIxSv67PnQ0pMkPMgxzyhJGktBbLmycWHmq5ColDoz4pLLPum/mL2YTZySOwwUlwHCWTPjq+M5kWEcvhjcDf2PgbcXF9UQ/1jRLRtdT9JEwSE+ylZJWguNFWzpwCo9KD6HUdLjHMG4NscjkN5WsGMT2KBN1CXN7bBiI=
+  on:
+    tags: true
+    branch: master
