@@ -1,1 +1,5 @@
 .vscode
+build/
+dist/
+__pycache__/
+skinnywms.egg-info/
