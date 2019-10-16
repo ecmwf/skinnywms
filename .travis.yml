@@ -50,7 +50,7 @@ install:
 script:
   - pytest
 
-after_script: 
+after_install: 
   - export TRAVIS_TAG=`git describe --tags`
   - echo $TRAVIS_TAG
 
