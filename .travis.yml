@@ -41,7 +41,11 @@ before_install:
 
 install:
   - conda install -c conda-forge magics
- 
+
+after_install: 
+  - export TRAVIS_TAG=`git describe --tags`
+  - echo $TRAVIS_TAG
+
 
 #---------------------------------#
 #       build configuration       #
@@ -50,9 +54,6 @@ install:
 script:
   - pytest
 
-after_install: 
-  - export TRAVIS_TAG=`git describe --tags`
-  - echo $TRAVIS_TAG
 
 deploy:
   provider: pypi
