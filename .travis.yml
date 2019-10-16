@@ -50,6 +50,8 @@ install:
 script:
   - pytest
 
+before_deploy:
+  - export TRAVIS_TAG=$GIT_TAG
 
 deploy:
   provider: pypi
