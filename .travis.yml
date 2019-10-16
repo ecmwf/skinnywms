@@ -14,17 +14,10 @@ matrix:
   include:
     - os: linux
       dist: xenial
-      addons:
-        apt:
-          packages:
-            - libpango1.0-dev
       env:
         MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
-        PROJ4_PATH=~/miniconda3
+        
 
-env:
-  global:
-    - PYTHONPATH=${PYTHONPATH}:.
     
 
 git:
@@ -41,7 +34,7 @@ before_install:
   # auto-yes for conda
   - conda config --set always_yes yes
   # update conda
-  - conda update -n base -c defaults conda
+  #- conda update -n base -c defaults conda
   
 
 install:
