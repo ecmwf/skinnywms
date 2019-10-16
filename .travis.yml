@@ -4,6 +4,10 @@
 
 sudo: false
 
+branches:
+  only:
+    - master
+    - /^\d+\.\d+\.\d+$/
 
 language: python
 
@@ -48,7 +52,6 @@ install:
 
 script:
   - echo $TRAVIS_TAG
-  - git describe --tags
   - echo $GIT_TAG
   - pytest
 
