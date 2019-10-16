@@ -51,7 +51,8 @@ script:
   - pytest
 
 before_deploy:
-  - export TRAVIS_TAG=$GIT_TAG
+  - export TRAVIS_TAG=`git describe --tags`
+  - echo $TRAVIS_TAG
 
 deploy:
   provider: pypi
