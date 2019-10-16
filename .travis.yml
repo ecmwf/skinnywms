@@ -50,9 +50,14 @@ install:
 script:
   - pytest
 
+<<<<<<< HEAD
 before_deploy:
   - export TRAVIS_TAG=`git describe --tags`
   - echo $TRAVIS_TAG
+=======
+after_script:
+  - export TRAVIS_TAG=$GIT_TAG
+>>>>>>> 0.1.8
 
 deploy:
   provider: pypi
