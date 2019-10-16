@@ -4,9 +4,6 @@
 
 sudo: false
 
-branches:
-  only:
-    - master
 
 language: python
 
@@ -51,6 +48,7 @@ install:
 
 script:
   - echo $TRAVIS_TAG
+  - git describe --tags
   - echo $GIT_TAG
   - pytest
 
