@@ -9,6 +9,8 @@
 import logging
 import os
 import tempfile
+import shutil
+import weakref
 
 
 from skinnywms import errors, protocol
@@ -47,6 +49,22 @@ class TmpFile:
         with open(self.fname, 'rb') as f:
             return f.read()
 
+class FileRemover(object):
+    # derived from: https://stackoverflow.com/a/32132035
+    def __init__(self):
+        self.weak_references = dict()  # weak_ref -> filepath to remove
+
+    def cleanup_once_done(self, response, filepath):
+        wr = weakref.ref(response, self._do_cleanup)
+        self.weak_references[wr] = filepath
+
+    def _do_cleanup(self, wr):
+        filepath = self.weak_references[wr]
+        print('Deleting %s' % filepath)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+file_remover = FileRemover()
 
 class WMSServer:
 
@@ -120,8 +138,9 @@ class WMSServer:
                     params['crs'] = srs
 
                 content_type, path = self.get_map(**params)
-
-                return send_file(path, content_type)
+                resp = send_file(path, content_type)
+                file_remover.cleanup_once_done(resp,path)
+                return resp
 
             elif req == 'getlegendgraphic':
                 params = protocol.get_wms_parameters(req, version, params)
@@ -135,8 +154,9 @@ class WMSServer:
                         pass
 
                 content_type, path = self.get_legend(**params)
-
-                return send_file(path, content_type)
+                resp = send_file(path, content_type)
+                file_remover.cleanup_once_done(resp,path)
+                return resp
 
             else:
                 raise errors.OperationNotSupported(req_orig)
