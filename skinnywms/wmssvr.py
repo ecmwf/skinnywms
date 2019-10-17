@@ -32,6 +32,14 @@ parser.add_argument('--style',
                     default='',
                     help='Path to a directory where to find the styles')
 
+parser.add_argument('--host',
+                    default="127.0.0.1",
+                    help='Hostname')
+parser.add_argument('--port',
+                    default=5000,
+                    help='Port number')
+
+
 args = parser.parse_args()
 
 if args.style != '':
@@ -62,4 +70,8 @@ def availability():
 @application.route('/', methods=['GET'])
 def index():
     return render_template('leaflet_demo.html')
+
+
+def execute():
+  application.run(port = args.port, host=args.host, debug=True, threaded=False)
 
