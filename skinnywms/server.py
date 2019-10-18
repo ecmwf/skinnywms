@@ -15,7 +15,6 @@ import weakref
 
 from skinnywms import errors, protocol
 
-
 LOG = logging.getLogger(__name__)
 
 
@@ -60,11 +59,11 @@ class FileRemover(object):
 
     def _do_cleanup(self, wr):
         filepath = self.weak_references[wr]
-        print('Deleting %s' % filepath)
-        if os.path.exists(filepath):
+        LOG.debug('Deleting %s' % filepath)
+        try:
             os.remove(filepath)
-
-file_remover = FileRemover()
+        except:
+            LOG.exception('Cannot remove file %s' % filepath)
 
 class WMSServer:
 
@@ -82,6 +81,8 @@ class WMSServer:
 
         self.styler = styler
         self.styler.set_context(self)
+
+        self.file_remover = FileRemover()
 
         # For objects to store context
         self.stash = {}
@@ -139,7 +140,7 @@ class WMSServer:
 
                 content_type, path = self.get_map(**params)
                 resp = send_file(path, content_type)
-                file_remover.cleanup_once_done(resp,path)
+                self.file_remover.cleanup_once_done(resp,path)
                 return resp
 
             elif req == 'getlegendgraphic':
@@ -155,7 +156,7 @@ class WMSServer:
 
                 content_type, path = self.get_legend(**params)
                 resp = send_file(path, content_type)
-                file_remover.cleanup_once_done(resp,path)
+                self.file_remover.cleanup_once_done(resp,path)
                 return resp
 
             else:
