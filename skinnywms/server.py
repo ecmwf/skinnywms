@@ -62,8 +62,8 @@ class FileRemover(object):
         LOG.debug('Deleting %s' % filepath)
         try:
             os.remove(filepath)
-        except:
-            LOG.exception('Cannot remove file %s' % filepath)
+        except Exception as exc:
+            LOG.exception('Error while deleting %s : %s', filepath, exc)
 
 class WMSServer:
 
