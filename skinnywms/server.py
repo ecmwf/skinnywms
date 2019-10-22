@@ -47,8 +47,7 @@ class TmpFile:
             return f.read()
 
     def cleanup(self):
-        LOG.debug('Deleting %s' % self.fname)
-        os.unlink(self.name)
+        os.unlink(self.fname)
 
 
 class NoCaching:
