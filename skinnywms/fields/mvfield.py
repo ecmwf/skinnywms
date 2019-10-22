@@ -168,9 +168,38 @@ class MvGeopointsVectorField(MvField):
             self.path, self.index, self.data_index)
 
 
+class MvBufrField(MvField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def render(self, context, driver, style, legend={}):
+        data = []
+        params = {'obs_input_file_name': self.path}
+
+        data.append(driver.mobs(**params))
+        self.log.info('bufr render style= {}', style.as_dict())
+        data.extend(self.render_style(driver, style))
+        return data
+
+    def as_dict(self):
+        return dict(_class=self.__class__.__module__ +
+                    '.' + self.__class__.__name__,
+                    name=self.name,
+                    title=self.title,
+                    path=self.path,
+                    index=self.index,
+                    data_index=self.data_index,  
+                    styles=[s.as_dict() for s in self.styles])
+
+    def __repr__(self):
+        return 'MvBufrField[{},{},{}]'.format(
+            self.path, self.index, self.data_index)
+
+
 _makers = {
         'grib': MvGribField,
         'grib_vector': MvGribField,
         'geopoints': MvGeopointsField,
-        'geopoints_vector': MvGeopointsVectorField
+        'geopoints_vector': MvGeopointsVectorField,
+        'bufr': MvBufrField
     }
