@@ -203,6 +203,7 @@ class Plotter(datatypes.Plotter):
                 'subpage_y_position': 0.,
                 'output_width': width,
                 'page_frame': 'off',
+                'skinny_mode' :  "on", 
                 'page_id_line': 'off'}
 
             # add extra settings for polar stereographic projection when
