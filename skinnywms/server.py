@@ -48,7 +48,7 @@ class TmpFile:
 
     def cleanup(self):
         LOG.debug('Deleting %s' % self.fname)
-        os.unlink(self.name)
+        os.unlink(self.fname)
 
 
 class NoCaching:
@@ -211,24 +211,24 @@ class WMSServer:
 
         LOG.debug("->{}_{}".format(version, crs))
 
-        path = self.plotter.plot(self,
-                                 output,
-                                 bbox,
-                                 crs,
-                                 format,
-                                 height,
-                                 layer_objs,
-                                 styles,
-                                 version,
-                                 width,
-                                 _macro=_macro,
-                                 bgcolor=bgcolor,
-                                 elevation=elevation,
-                                 exceptions=exceptions,
-                                 time=time,
-                                 transparent=transparent)
+        mime_type, path = self.plotter.plot(self,
+                                            output,
+                                            bbox,
+                                            crs,
+                                            format,
+                                            height,
+                                            layer_objs,
+                                            styles,
+                                            version,
+                                            width,
+                                            _macro=_macro,
+                                            bgcolor=bgcolor,
+                                            elevation=elevation,
+                                            exceptions=exceptions,
+                                            time=time,
+                                            transparent=transparent)
 
-        return format, path
+        return mime_type, path
 
     def get_legend(self,
                    output,

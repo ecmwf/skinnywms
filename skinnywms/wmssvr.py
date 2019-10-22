@@ -43,14 +43,12 @@ parser.add_argument('--port',
 args = parser.parse_args()
 
 if args.style != '':
-    os.environ["MAGICS_STYLE_PATH"] = args.style+ ":ecmwf"
+    os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
 server = WMSServer(
     Availability(args.path),
     Plotter(),
     Styler())
-
-
 
 
 @application.route('/wms', methods=['GET'])
@@ -73,5 +71,7 @@ def index():
 
 
 def execute():
-  application.run(port = args.port, host=args.host, debug=True, threaded=False)
-
+    application.run(port=args.port,
+                    host=args.host,
+                    debug=True,
+                    threaded=False)
