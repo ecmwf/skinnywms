@@ -79,15 +79,6 @@ except Exception as e:
 """
 
 
-def on_off(value):
-    if isinstance(value, (float, int, bool)):
-        if value:
-            return 'on'
-        else:
-            return 'off'
-    return value
-
-
 class StaticLayer(datatypes.Layer):
 
     def style(self, name):
@@ -227,7 +218,7 @@ class Plotter(datatypes.Plotter):
             args = [
                 macro.output(output_formats=[magics_format],
                              output_name_first_page_number='off',
-                             output_cairo_transparent_background=on_off(transparent),
+                             output_cairo_transparent_background=transparent,
                              output_width=width,
                              output_name=path),
                 macro.mmap(**map_params),
@@ -285,7 +276,7 @@ class Plotter(datatypes.Plotter):
             args = [
                 macro.output(output_formats=[magics_format],
                              output_name_first_page_number='off',
-                             output_cairo_transparent_background=on_off(transparent),
+                             output_cairo_transparent_background=transparent,
                              output_width=width,
                              output_name=path),
                 macro.mmap(
