@@ -23,6 +23,8 @@ demo = os.path.join(os.path.dirname(__file__),
                     'testdata',
                     'sfc.grib')
 
+demo = os.environ.get("SKINNYWMS_DATA_PATH", demo)
+
 parser = argparse.ArgumentParser(description='Simple WMS server')
 
 parser.add_argument('-f', '--path',
