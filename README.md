@@ -20,14 +20,15 @@ Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
 * The demo:
 
-$ python demo.py --path /path/to/mydata
+    $ python demo.py --path /path/to/mydata
 
 * The command line:
-$ skinny-wms --path /path/to/mydata
+
+    $ skinny-wms --path /path/to/mydata
 
 * Or with uwsgi
 
-$ uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
+    $ uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
 
 Installation
 ------------
