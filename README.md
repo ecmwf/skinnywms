@@ -26,7 +26,7 @@ Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
     $ skinny-wms --path /path/to/mydata
 
-* Or with uwsgi
+* Or with uwsgi:
 
     $ uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
 
@@ -35,7 +35,7 @@ Installation
 
 SkinnyWMS  depends on the ECMWF *Magics* library.
 
-If you do not have *Magics* installed on your platform, skinnywms is available on conda forge https://conda-forge.org/::
+If you do not have *Magics* installed on your platform, skinnywms is available on conda forge https://conda-forge.org/
 
     $ conda config --add channels conda-forge
     $ conda install skinnywms
