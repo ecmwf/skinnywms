@@ -19,10 +19,14 @@ There are 2 ways to start using it, they both will start a small Flask server.
 Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
 * The demo:
+
 $ python demo.py --path /path/to/mydata
+
 * The command line:
 $ skinny-wms --path /path/to/mydata
+
 * Or with uwsgi
+
 $ uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
 
 Installation
@@ -36,7 +40,7 @@ If you do not have *Magics* installed on your platform, skinnywms is available o
     $ conda install skinnywms
 
 
-If you have *Magics* already installed you can use pip::
+If you have *Magics* already installed you can use pip:
 
     $ pip install skinnywms
 
