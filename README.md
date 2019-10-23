@@ -43,13 +43,16 @@ SkinnyWMS  depends on the ECMWF *Magics* library.
 
 If you do not have *Magics* installed on your platform, skinnywms is available on conda forge https://conda-forge.org/
 
-    $ conda config --add channels conda-forge
-    $ conda install skinnywms
-
+```bash
+conda config --add channels conda-forge
+conda install skinnywms
+```
 
 If you have *Magics* already installed you can use pip:
 
-    $ pip install skinnywms
+```bash
+pip install skinnywms
+```
 
 Limitations:
 ------------
