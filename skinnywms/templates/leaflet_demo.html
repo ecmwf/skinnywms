@@ -17,7 +17,6 @@
   <div id="menu">
       <label for="layer-selection">Layer</label><select id="layer-selection" multiple></select>
       <label for="time-selection">Time</label><select id="time-selection" disabled></select>
-      <button id="load-maps" disabled>Load maps</button>
       <button id="prev-time" disabled>Prev</button>
       <button id="next-time" disabled>Next</button>
   </div>
@@ -56,7 +55,6 @@
           version: '1.3.0'
         }).addTo(mymap);
 
-      // Association between select tag and layer object
       layerNames.forEach(function(layer) {
           let options = {
               layers: layer.name,
@@ -73,10 +71,12 @@
                                        .data("layer", layer)
                                        .data("wmslayer", wmslayer));
       });
-
       // When a layer is added/removed:
-      // 1. Update the time values (union of the available time values of the selected layers)
-      // 2. Enable the buttons that will load the maps
+      // - Update the time values (union of the available time values of the selected layers)
+      // - If the time list if not empty: enable the time list and the time navigation inputs and
+      //   set the first time if needed
+      // - If the time list is empty, disable the time list and the time navigation inputs.
+      // - Update the map
       $("#layer-selection").on("change", function(handler) {
           let current_time = $("#time-selection option:selected").val();
           $("#time-selection").empty();
@@ -103,7 +103,7 @@
               }
           }
           $("#time-selection, #next-time, #prev-time").prop("disabled", available_times.size == 0);
-          $("#load-maps").prop("disabled", false);
+          update_map();
       });
       // On click, set the previous time value and show the selected maps
       $("#prev-time").on("click", function() {
@@ -125,11 +125,6 @@
           $("#time-selection").val(next);
           update_map();
       });
-      // On click, update the map with the current layer/time selection
-      $("#load-maps").on("click", function() {
-          update_map();
-      });
-
       // Show the selected layers.
       // The layers without available time values are always showed.
       // Otherwise, the layer is showed only if the selected time is among
