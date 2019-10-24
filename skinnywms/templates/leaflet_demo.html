@@ -105,6 +105,10 @@
           $("#time-selection, #next-time, #prev-time").prop("disabled", available_times.size == 0);
           update_map();
       });
+      // Update the map when the time selection changes
+      $("#time-selection").on("change", function() {
+          update_map();
+      });
       // On click, set the previous time value and show the selected maps
       $("#prev-time").on("click", function() {
           var cur = $("#time-selection option:selected");
