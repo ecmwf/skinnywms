@@ -15,7 +15,7 @@
 </head>
 <body>
   <div id="menu">
-      <label for="layer-selection">Layer</label><select id="layer-selection"></select>
+      <label for="layer-selection">Layer</label><select id="layer-selection" multiple></select>
       <label for="time-selection">Time</label><select id="time-selection" disabled></select>
       <button id="prev-time" disabled>Prev</button>
       <button id="next-time" disabled>Next</button>
@@ -32,9 +32,11 @@
     }
     label {
         padding: 0.2em;
+        vertical-align: middle;
     }
     select {
         min-width: 200px;
+        vertical-align: middle;
     }
   </style>
   <script>
