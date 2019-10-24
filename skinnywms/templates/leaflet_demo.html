@@ -76,7 +76,7 @@
 
       // When a layer is added/removed:
       // 1. Update the time values (union of the available time values of the selected layers)
-      // 2. Enable the "load maps" button
+      // 2. Enable the buttons that will load the maps
       $("#layer-selection").on("change", function(handler) {
           let current_time = $("#time-selection option:selected").val();
           $("#time-selection").empty();
