@@ -21,6 +21,8 @@ demo = os.path.join(os.path.dirname(__file__),
                     'testdata',
                     'sfc.grib')
 
+demo = os.environ.get("SKINNYWMS_DATA_PATH", demo)
+
 parser = argparse.ArgumentParser(description='Simple WMS server')
 
 parser.add_argument('-f', '--path',
@@ -43,6 +45,7 @@ args = parser.parse_args()
 if args.style != '':
     os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
+
 mv_layers_conf = os.getenv('ECMWF_MV_LAYERS_CONFIG', '')
 
 if mv_layers_conf == '':
@@ -57,7 +60,6 @@ else:
         MvAvailability(mv_layers_conf),
         Plotter(),
         Styler())
-
 
 @application.route('/wms', methods=['GET'])
 def wms():
@@ -79,4 +81,6 @@ def index():
 
 
 def execute():
+
     application.run(port=args.port, host=args.host, debug=True, threaded=False)
+
