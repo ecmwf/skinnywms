@@ -81,6 +81,7 @@ _WMS_KNOWN_PARAMS = {
         ('bbox', True, _bbox_norm),
         ('bgcolor', False, None),
         ('crs', True, None),
+        ('dim_index', False, None),
         ('elevation', False, None),
         ('exceptions', False, None),
         ('format', True, None),

@@ -185,6 +185,7 @@ class WMSServer:
                 styles=None,
                 _macro=False,
                 bgcolor=None,
+                dim_index=None,
                 elevation=None,
                 exceptions=None,
                 time=None,
@@ -196,10 +197,13 @@ class WMSServer:
         while len(styles) < len(layers):
             styles.append('')
 
+        # collect the dims, the fields selection is based on this information
+        dims = {'time': time, 'elevation': elevation, 'dim_index': dim_index}
+
         layer_objs = []
         for name in layers:
             try:
-                layer = self.availability.layer(name, time)
+                layer = self.availability.layer(name, dims)
             except errors.LayerNotDefined:
                 layer = self.plotter.layer(name)
 
@@ -270,7 +274,8 @@ class WMSServer:
         layers = list(self.availability.layers())
         LOG.info("Layers are %s", layers)
 
-        layers += list(self.plotter.layers())
+        if self.availability.auto_add_plotter_layers:
+            layers += list(self.plotter.layers())
 
         layers = sorted(layers, key=lambda k: k.zindex)
 
