@@ -101,13 +101,13 @@ https://github.com/ecmwf/magics
 
 Please see the CONTRIBUTING.rst document for the best way to help.
 
-Lead developer:
+Lead developers:
 
 - `Sylvie Lamy-Thepaut <https://github.com/sylvielamythepaut>`_ - ECMWF
+- `Baudouin Raoult <https://github.com/b8raoult>` - ECMWF
 
 Main contributors:
 
-- `Baudouin Raoult` - ECMWF
 - `Stephan Siemen <https://github.com/stephansiemen>`_ - ECMWF
 - `Milana Vuckovic`- ECMWF
 
