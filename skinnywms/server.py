@@ -13,17 +13,16 @@ import tempfile
 
 from skinnywms import errors, protocol
 
-
 LOG = logging.getLogger(__name__)
 
 
 def revert_bbox(bbox):
     minx, miny, maxx, maxy = bbox
-    return [ miny, minx, maxy, maxx]
+    return [miny, minx, maxy, maxx]
 
 
 bounding_box = {
-    "1.3.0_EPSG:4326" : revert_bbox
+    "1.3.0_EPSG:4326": revert_bbox
 }
 
 
@@ -47,6 +46,16 @@ class TmpFile:
         with open(self.fname, 'rb') as f:
             return f.read()
 
+    def cleanup(self):
+        LOG.debug('Deleting %s' % self.fname)
+        os.unlink(self.fname)
+
+
+class NoCaching:
+
+    def create_output(self):
+        return TmpFile()
+
 
 class WMSServer:
 
@@ -54,7 +63,7 @@ class WMSServer:
                  availability,
                  plotter,
                  styler,
-                 output=None):
+                 caching=NoCaching()):
 
         self.availability = availability
         self.availability.set_context(self)
@@ -64,6 +73,8 @@ class WMSServer:
 
         self.styler = styler
         self.styler.set_context(self)
+
+        self.caching = caching
 
         # For objects to store context
         self.stash = {}
@@ -91,7 +102,7 @@ class WMSServer:
         req = req_orig.lower()
 
         if output is None:
-            output = TmpFile()
+            output = self.caching.create_output()
 
         try:
             LOG.info(req)
@@ -120,8 +131,10 @@ class WMSServer:
                     params['crs'] = srs
 
                 content_type, path = self.get_map(**params)
+                resp = send_file(path, content_type)
+                output.cleanup()
 
-                return send_file(path, content_type)
+                return resp
 
             elif req == 'getlegendgraphic':
                 params = protocol.get_wms_parameters(req, version, params)
@@ -135,8 +148,10 @@ class WMSServer:
                         pass
 
                 content_type, path = self.get_legend(**params)
+                resp = send_file(path, content_type)
+                output.cleanup()
 
-                return send_file(path, content_type)
+                return resp
 
             else:
                 raise errors.OperationNotSupported(req_orig)
@@ -146,9 +161,11 @@ class WMSServer:
             LOG.exception('%s(): Error: %s', req, exc)
             content_type = exc.content_type(version)
             content = exc.body(version)
+
         except Exception as exc:
             if reraise:
                 raise
+
             LOG.exception('%s(): Error: %s', req, exc)
             exc = errors.wrap(exc)
             content_type = exc.content_type(version)
@@ -190,28 +207,28 @@ class WMSServer:
 
         # Interpret the BBox
 
-        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x) )(bbox)
+        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x))(bbox)
 
         LOG.debug("->{}_{}".format(version, crs))
 
-        path = self.plotter.plot(self,
-                                 output,
-                                 bbox,
-                                 crs,
-                                 format,
-                                 height,
-                                 layer_objs,
-                                 styles,
-                                 version,
-                                 width,
-                                 _macro=_macro,
-                                 bgcolor=bgcolor,
-                                 elevation=elevation,
-                                 exceptions=exceptions,
-                                 time=time,
-                                 transparent=transparent)
+        mime_type, path = self.plotter.plot(self,
+                                            output,
+                                            bbox,
+                                            crs,
+                                            format,
+                                            height,
+                                            layer_objs,
+                                            styles,
+                                            version,
+                                            width,
+                                            _macro=_macro,
+                                            bgcolor=bgcolor,
+                                            elevation=elevation,
+                                            exceptions=exceptions,
+                                            time=time,
+                                            transparent=transparent)
 
-        return format, path
+        return mime_type, path
 
     def get_legend(self,
                    output,

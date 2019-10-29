@@ -23,6 +23,8 @@ demo = os.path.join(os.path.dirname(__file__),
                     'testdata',
                     'sfc.grib')
 
+demo = os.environ.get("SKINNYWMS_DATA_PATH", demo)
+
 parser = argparse.ArgumentParser(description='Simple WMS server')
 
 parser.add_argument('-f', '--path',
@@ -43,14 +45,12 @@ parser.add_argument('--port',
 args = parser.parse_args()
 
 if args.style != '':
-    os.environ["MAGICS_STYLE_PATH"] = args.style+ ":ecmwf"
+    os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
 server = WMSServer(
     Availability(args.path),
     Plotter(),
     Styler())
-
-
 
 
 @application.route('/wms', methods=['GET'])
@@ -73,5 +73,8 @@ def index():
 
 
 def execute():
-  application.run(port = args.port, host=args.host, debug=True, threaded=False)
-
+    application.run(port=args.port,
+                    host=args.host,
+                    debug=True,
+                    # processes=10,
+                    threaded=False)
