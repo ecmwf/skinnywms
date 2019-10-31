@@ -3,6 +3,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"
     integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
     crossorigin=""/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.0/dist/leaflet.timedimension.control.min.css" />
   <!-- Make sure you put this AFTER Leaflet's CSS -->
   <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"
     integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
@@ -12,14 +13,11 @@
     src="https://code.jquery.com/jquery-1.12.4.js"
     integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU="
     crossorigin="anonymous"></script>
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.0/dist/leaflet.timedimension.min.js"></script>
 </head>
 <body>
-  <div id="menu">
-      <label for="layer-selection">Layer</label><select id="layer-selection" multiple></select>
-      <label for="time-selection">Time</label><select id="time-selection" disabled></select>
-      <button id="prev-time" disabled>Prev</button>
-      <button id="next-time" disabled>Next</button>
-  </div>
   <div id="mapid"></div>
   <style>
     html, body {
@@ -30,208 +28,77 @@
     #mapid {
       height: 100%;
     }
-    label {
-        padding: 0.2em;
-        vertical-align: middle;
-    }
-    select {
-        min-width: 200px;
-        vertical-align: middle;
-    }
   </style>
   <script>
-    let plotLayers = function(layerNames) {
       let mymap = L.map('mapid', {
-        center: [0, 0],
-        zoom: 2,
-        crs: L.CRS.EPSG4326,
+          center: [0, 0],
+          zoom: 2,
+          crs: L.CRS.EPSG4326,
+          timeDimension: true,
+          timeDimensionControl: true,
       });
-
       let background = L.tileLayer.wms('/wms?', {
           layers: 'background',
           format: 'image/png',
           transparent: 'TRUE',
           attribution: '',
           version: '1.3.0'
-        }).addTo(mymap);
+      }).addTo(mymap);
 
-      layerNames.forEach(function(layer) {
-          let options = {
-              layers: layer.name,
-              format: 'image/png',
-              transparent: 'TRUE',
-              opacity: 0.8,
-              attribution: '',
-              version: '1.3.0'
-          };
-          let wmslayer = L.tileLayer.wms("/wms?", options);
-          $("#layer-selection").append($("<option>")
-                                       .val(layer.name)
-                                       .text(layer.title)
-                                       .data("layer", layer)
-                                       .data("wmslayer", wmslayer));
-      });
-      // When a layer is added/removed:
-      // - Update the time values (union of the available time values of the selected layers)
-      // - If the time list if not empty: enable the time list and the time navigation inputs and
-      //   set the first time if needed
-      // - If the time list is empty, disable the time list and the time navigation inputs.
-      // - Update the map
-      $("#layer-selection").on("change", function(handler) {
-          let current_time = $("#time-selection option:selected").val();
-          $("#time-selection").empty();
+      fetch('/wms').then(function(response) {
+          return response.text();
+      }).then(function(text) {
+          let layers = {}
+          let legends = {}
+          let $xml = $($.parseXML(text));
+          $xml.find('Layer').each(function() {
+              let name = $(this).find('> Name').text();
+              let title = $(this).find('> Title').text();
+              let legendurl = $(this).find("> Style > LegendUrl > OnlineResource").attr("xlink:href");
+              if (name == "background" || name == "")
+                  return;
 
-          let available_times = new Set();
-          $("#layer-selection option:selected").each(function() {
-              $(this).data("layer").times.forEach(function(time) {
-                  available_times.add(time);
+              let wmslayer = L.tileLayer.wms("/wms", {
+                  layers: name,
+                  format: 'image/png',
+                  transparent: true,
+                  version: "1.3.0",
               });
+              layers[title] = L.timeDimension.layer.wms(wmslayer, {
+                  updateTimeDimension: true,
+                  updateTimeDimensionMode: "union",
+                  requestTimeFromCapabilities: true,
+              });
+
+              let legendControl = L.control({
+                  position: 'bottomright'
+              });
+              legendControl.onAdd = function(map) {
+                  var div = L.DomUtil.create('div', 'info legend');
+                  div.innerHTML += '<img src="' + legendurl + '"/>';
+                  return div;
+              };
+              legends[title] = legendControl;
           });
-          available_times.forEach(function(time) {
-              let select = $("<option>").val(time).text(time);
-              if (time == current_time) {
-                  select.prop("selected", "selected");
-              }
-              $("#time-selection").append(select);
+          let baseMaps = {
+              "background": background,
+          };
+          L.control.layers(baseMaps, layers).addTo(mymap);
+          mymap.on('overlayadd', function(eventLayer) {
+              legends[eventLayer.name].addTo(this);
           });
-          if (current_time) {
-              current_time_tag = $('#time-selection option[value="' + current_time + '"]');
-              if (current_time_tag.length == 0) {
-                  $("#time-selection option").first("selected", "selected");
-              } else {
-                  current_time_tag.attr("selected", "selected");
-              }
-          }
-          $("#time-selection, #next-time, #prev-time").prop("disabled", available_times.size == 0);
-          update_map();
-      });
-      // Update the map when the time selection changes
-      $("#time-selection").on("change", function() {
-          update_map();
-      });
-      // On click, set the previous time value and show the selected maps
-      $("#prev-time").on("click", function() {
-          var cur = $("#time-selection option:selected");
-          var prev = $("#time-selection option:selected").prev().val()
-          if (!prev)
-              prev = $("#time-selection option").last().val();
-
-          $("#time-selection").val(prev);
-          update_map();
-      });
-      // On click, set the next time value and show the selected maps
-      $("#next-time").on("click", function() {
-          var cur = $("#time-selection option:selected");
-          var next = $("#time-selection option:selected").next().val();
-          if (!next)
-              next = $("#time-selection option").first().val();
-
-          $("#time-selection").val(next);
-          update_map();
-      });
-      // Show the selected layers.
-      // The layers without available time values are always showed.
-      // Otherwise, the layer is showed only if the selected time is among
-      // the time values of the layer itself.
-      function update_map() {
-          let time = $("#time-selection option:selected").val();
-          $("#layer-selection option").each(function() {
-              let wmslayer = $(this).data("wmslayer");
-              let layer = $(this).data("layer");
-              if (!$(this).prop("selected")) {
-                  // Remove not selected layers
-                  if (mymap.hasLayer(wmslayer)) {
-                      mymap.removeLayer(wmslayer);
-                  }
-              } else {
-                  if (layer.times.length > 0) {
-                      // If the layer has time values
-                      if (layer.times.indexOf(time) >= 0) {
-                          // Update the time param only if needed
-                          if (wmslayer.wmsParams.time != time) {
-                              wmslayer.setParams({
-                                 time: time
-                              });
-                          }
-                          if (!mymap.hasLayer(wmslayer)) {
-                              mymap.addLayer(wmslayer);
-                          }
-                      } else {
-                          // If the layer is not defined for the selected time,
-                          // remove it.
-                          if (mymap.hasLayer(wmslayer))
-                              mymap.removeLayer(wmslayer);
-                      }
-                  } else {
-                      // If the layer hasn't time values, add it to the map
-                      if (!mymap.hasLayer(wmslayer)) {
-                          mymap.addLayer(wmslayer);
-                      }
-                  }
-              }
+          mymap.on('overlayremove', function(eventLayer) {
+              this.removeControl(legends[eventLayer.name]);
           });
-      }
-
-      let baseMaps = {
-        'background': background
-      };
-
-      L.control.layers(baseMaps).addTo(mymap);
-
-      L.control.scale().addTo(mymap);
-    };
-
-    fetch('/wms').then(function(response) {
-      return response.text();
-    }).then(function(text) {
-      let layerNames = [];
-      let $xml = $($.parseXML(text));
-      $xml.find('Layer').each(function() {
-        if ($(this).text() == 'background')
-          return;
-
-        var title = $(this).find('> Title').text()
-        var name = $(this).find('> Name').text()
-        var times = parse_time_list($(this).find('> Dimension[name="time"]').text());
-        layerNames.push({
-            title: title,
-            name: name,
-            times: times
-        });
       });
-      plotLayers(layerNames);
-    });
 
-    // This function parse a list of ISO8601 string only, with some limitations:
-    // each element of the list must be a single time string (YYYY-mm-ddTHH:MM:SSZ)
-    // or an interval YYYY-mm-ddTHH:MM:SSZ/YYYY-mm-ddTHH:MM:SSZ/PTX[HM], where
-    // X is the number and the unit can be H or M only.
-    function parse_time_list(timestring) {
-        if (timestring == "")
-            return [];
+      let legend = L.control({
+          position: 'bottomright'
+      });
+      mymap.on('overlayadd', function(e) {
+          var div = L.DomUtil.create('div', 'info legend');
 
-        var items = timestring.split(",");
-        var times = [];
-        items.forEach(function(item) {
-            if (item.slice(-1) == "Z") {
-                times.push(item);
-            } else {
-                var arr = item.split("/");
-                var start = new Date(arr[0]);
-                var end = new Date(arr[1]);
-                var step_value = parseInt(arr[2].replace(/PT([0-9]+)[HM]/, '$1'));
-                var step_unit = arr[2].slice(-1);
-                if (step_unit == "H") {
-                    step_value = step_value * 60
-                };
-                for (var t = start; t <= end; t = new Date(t.getTime() + step_value * 60000)) {
-                    var s = t.toISOString().replace(/\.000Z$/, "Z");
-                    times.push(s);
-                }
-            }
-        });
-        return times;
-    }
+      });
   </script>
 </body>
 </html>
