@@ -108,7 +108,7 @@
       {% endfor %}
 
       {% for l in layers %}
-      <Layer{% if l.queryable %} queryable="1"{% endif %}>
+      <Layer queryable="1">
         <Name>{{ l.name }}</Name>
 	{% if l.title %}
         <Title>{{ l.title }}</Title>
