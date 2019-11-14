@@ -168,6 +168,38 @@ class MvGeopointsVectorField(MvField):
             self.path, self.index, self.data_index)
 
 
+class MvOdbField(MvField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def render(self, context, driver, style, legend={}):
+        data = []
+        params = {
+            'odb_filename': self.path,
+            'odb_latitude_variable': self.layer.conf.get('latitude',''),
+            'odb_longitude_variable': self.layer.conf.get('longitude', ''),
+            'odb_value_variable': self.layer.conf.get('value', '')
+        }
+
+        data.append(driver.odb_geopoints(**params))
+        data.extend(self.render_style(driver, style))
+        return data
+
+    def as_dict(self):
+        return dict(_class=self.__class__.__module__ +
+                    '.' + self.__class__.__name__,
+                    name=self.name,
+                    title=self.title,
+                    path=self.path,
+                    index=self.index,
+                    data_index=self.data_index,  
+                    styles=[s.as_dict() for s in self.styles])
+
+    def __repr__(self):
+        return 'MvOdbField[{},{},{}]'.format(
+            self.path, self.index, self.data_index)
+
+
 class MvBufrField(MvField):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -201,5 +233,6 @@ _makers = {
         'grib_vector': MvGribField,
         'geopoints': MvGeopointsField,
         'geopoints_vector': MvGeopointsVectorField,
-        'bufr': MvBufrField
+        'bufr': MvBufrField,
+        'odb': MvOdbField
     }

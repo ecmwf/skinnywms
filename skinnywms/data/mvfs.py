@@ -108,6 +108,7 @@ class MvDataLayer(MvLayer):
 
     def __init__(self, loader, context, name, title, zindex, conf):
         super().__init__(loader, name, title, zindex, conf)
+        self.conf = conf
         index = conf.get('index')
         if type(index) == int:
             index = [index]
