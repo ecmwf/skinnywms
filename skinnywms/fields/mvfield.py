@@ -61,7 +61,7 @@ class MvGribField(MvField):
     def render(self, context, driver, style, legend={}):
         data = []
         params = {'grib_input_file_name': self.path,
-                  'grib_field_position': self.data_index}
+                  'grib_field_position': self.data_index+1}
 
         data.append(driver.mgrib(**params))
         # self.log.info('render style= {}', style.as_dict())
@@ -90,8 +90,8 @@ class MvGribVectorField(MvField):
     def render(self, context, driver, style, legend={}):
         data = []
         params = {'grib_input_file_name': self.path,
-                  'grib_wind_position1': self.data_index[0],
-                  'grib_wind_position2': self.data_index[1]}
+                  'grib_wind_position1': self.data_index[0]+1,
+                  'grib_wind_position2': self.data_index[1]+1}
 
         data.append(driver.mgrib(**params))
         self.log.info('render style= {}', style.as_dict())
