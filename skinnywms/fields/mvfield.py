@@ -206,10 +206,15 @@ class MvBufrField(MvField):
 
     def render(self, context, driver, style, legend={}):
         data = []
-        params = {'obs_input_file_name': self.path}
+        template_path = self.layer.conf.get('template_path')
+        if not template_path:
+            params = {'obs_input_file_name': self.path}
+        else:
+            params = {
+                'obsjson_input_filename': self.path,
+                'obs_template_file_name': template_path}
 
         data.append(driver.mobs(**params))
-        self.log.info('bufr render style= {}', style.as_dict())
         data.extend(self.render_style(driver, style))
         return data
 
