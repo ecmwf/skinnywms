@@ -3,7 +3,8 @@ The skinny WMS is a small WMS server that will help you to visualise your NetCDF
 The principle is simple: skinny will browse the directory, or the single file passed as argument, and try to inpterpret each NetCDF or GRIB files. From the metadata, it will be built the getCapabilities document, and find a relevant style to plot the data.
 
 [![build](https://img.shields.io/travis/ecmwf/skinnywms/master.svg)](https://travis-ci.org/ecmwf/skinnywms/branches)
-
+[![Docker Build Status](https://img.shields.io/docker/cloud/build/ecmwf/skinnywms.svg)](https://hub.docker.com/r/ecmwf/skinnywms)
+[![Docker Pulls](https://img.shields.io/docker/pulls/ecmwf/skinnywms)](https://hub.docker.com/r/ecmwf/skinnywms)
 
 Features:
 ---------
@@ -35,6 +36,14 @@ skinny-wms --path /path/to/mydata
 ```bash
 uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
 ```
+Run using Docker
+----------------
+
+```bash
+ docker run --rm -p 5000:5000 -i -t ecmwf/skinnywms 
+ ```
+ Now you can try the leaflet demo at http://localhost:5000/
+
 
 Installation
 ------------
