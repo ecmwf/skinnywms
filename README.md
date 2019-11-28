@@ -4,7 +4,7 @@ The principle is simple: skinny will browse the directory, or the single file pa
 
 [![build](https://img.shields.io/travis/ecmwf/skinnywms/master.svg)](https://travis-ci.org/ecmwf/skinnywms/branches)
 [![Docker Build Status](https://img.shields.io/docker/cloud/build/ecmwf/skinnywms.svg)](https://hub.docker.com/r/ecmwf/skinnywms)
-[![Docker Pulls](https://img.shields.io/docker/pulls/ecmwf/skinnywms)](https://hub.docker.com/r/ecmwf/skinnywms)[![PyPI version](https://badge.fury.io/py/skinnywms.svg)](https://badge.fury.io/py/skinnywms)
+[![Docker Pulls](https://img.shields.io/docker/pulls/ecmwf/skinnywms)](https://hub.docker.com/r/ecmwf/skinnywms)[![PyPI version](https://badge.fury.io/py/skinnywms.svg)](https://badge.fury.io/py/skinnywms) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/skinnywms/badges/version.svg)](https://anaconda.org/conda-forge/skinnywms) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/skinnywms/badges/downloads.svg)](https://anaconda.org/conda-forge/skinnywms)
 
 Features:
 ---------
