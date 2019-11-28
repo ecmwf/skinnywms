@@ -38,6 +38,9 @@ parser.add_argument('--host',
 parser.add_argument('--port',
                     default=5000,
                     help='Port number')
+parser.add_argument('--baselayer',
+                    default='',
+                    help='Path to a directory where to find the baselayer')
 
 
 args = parser.parse_args()
@@ -52,7 +55,7 @@ if mv_layers_conf == '':
     from .data.fs import Availability
     server = WMSServer(
         Availability(args.path),
-        Plotter(),
+        Plotter(args.baselayer),
         Styler())
 else:
     from .data.mvfs import MvAvailability
@@ -60,6 +63,7 @@ else:
         MvAvailability(mv_layers_conf),
         Plotter(),
         Styler())
+    server.args = args
 
 @application.route('/wms', methods=['GET'])
 def wms():

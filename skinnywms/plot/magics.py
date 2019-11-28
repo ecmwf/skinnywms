@@ -91,6 +91,21 @@ class StaticLayer(datatypes.Layer):
     def __repr__(self):
         return 'StaticLayer[%s]' % (self.name,)
 
+class UserBaseLayer(StaticLayer): 
+
+    def render(self, context, driver, style):
+        return [driver.mcoast(map_user_layer = "on",
+        map_user_layer_name =self.layer,
+        map_user_layer_colour = "charcoal",
+        map_user_layer_thickness = 1,
+        map_grid = False,
+        map_coastline_colour = "none"
+
+      )
+    ]
+
+    def __repr__(self):
+        return 'UserBaseLayer[%s]' % (self.name,)
 
 class MagicsWebStyle(datatypes.Style):
     pass
@@ -104,19 +119,37 @@ class Plotter(datatypes.Plotter):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, styles=None):
+    def __init__(self, baselayer=None, styles=None):
         if styles is None:
             styles = {}
         self._styles = styles
-        self._layers = {
-            layer.name: layer
-            for layer in [
+        layers = [
                 StaticLayer('foreground', title='Foreground', zindex=99999),
                 StaticLayer('background', title='Background', zindex=-99999),
                 StaticLayer('grid', title='Grid', zindex=99999),
                 StaticLayer('boundaries', title='Boundaries', zindex=99999),
+                
             ]
+
+        if baselayer :
+            name = os.path.basename(baselayer)
+            try :
+                name = os.path.basename(baselayer)
+            except:
+                name = "user defined baselayer"
+            base = UserBaseLayer(name, title=name, zindex=99999)
+            base.layer = baselayer
+            layers.append(base)
+
+       
+
+        self._layers = {
+            layer.name: layer for layer in layers
         }
+
+
+
+
 
     def layers(self):
         for layer in self._layers.values():
