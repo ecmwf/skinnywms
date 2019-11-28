@@ -14,27 +14,14 @@
     crossorigin="anonymous"></script>
 </head>
 <body>
-  <div id="menu">
-      <label for="layer-selection">Layer</label><select id="layer-selection"></select>
-      <label for="time-selection">Time</label><select id="time-selection" disabled></select>
-      <button id="prev-time" disabled>Prev</button>
-      <button id="next-time" disabled>Next</button>
-  </div>
   <div id="mapid"></div>
   <style>
     html, body {
       height: 100%;
       margin: 0;
-      font-family: sans-serif;
     }
     #mapid {
       height: 100%;
-    }
-    label {
-        padding: 0.2em;
-    }
-    select {
-        min-width: 200px;
     }
   </style>
   <script>
@@ -53,70 +40,22 @@
           version: '1.3.0'
         }).addTo(mymap);
 
-      let current_layer = null;
-
-      layerNames.forEach(function(layer) {
-        var select = $("<option value='" + layer.name + "'>" + layer.title + "</option>");
-        select.data("layer", layer);
-        $("#layer-selection").append(select);
+      let layers = {};
+      layerNames.forEach(function(name) {
+        layers[name] = L.tileLayer.wms('/wms?', {
+          layers: name,
+          format: 'image/png',
+          transparent: 'TRUE',
+          attribution: '',
+          version: '1.3.0'
+        });
       });
-
-      $("#layer-selection").on("change", function() {
-          $("#time-selection").empty();
-          $("#layer-selection option:selected").data("layer").times.forEach(function(time) {
-              $("#time-selection").append("<option value='" + time + "'>" + time + "</option>");
-          });
-          $("#time-selection").change();
-      });
-      $("#time-selection").on("change", function() {
-          var time = $("#time-selection option:selected").val();
-          var layer = $("#layer-selection option:selected").data("layer");
-          if (current_layer)
-              mymap.removeLayer(current_layer);
-          var options = {
-              layers: layer.name,
-              format: 'image/png',
-              transparent: 'TRUE',
-              opacity: 0.8,
-              attribution: '',
-              version: '1.3.0'
-          }
-          if (time) {
-              options.time = time;
-              $(this).prop("disabled", false);
-              $("#next-time, #prev-time").prop("disabled", false);
-          } else {
-              $(this).prop("disabled", true);
-              $("#next-time, #prev-time").prop("disabled", true);
-          }
-          current_layer = L.tileLayer.wms("/wms?", options);
-          current_layer.addTo(mymap);
-      });
-      $("#prev-time").on("click", function() {
-          var cur = $("#time-selection option:selected");
-          var prev = $("#time-selection option:selected").prev().val()
-          if (!prev)
-              prev = $("#time-selection option").last().val();
-
-          $("#time-selection").val(prev);
-          $("#time-selection").change();
-      });
-      $("#next-time").on("click", function() {
-          var cur = $("#time-selection option:selected");
-          var next = $("#time-selection option:selected").next().val();
-          if (!next)
-              next = $("#time-selection option").first().val();
-
-          $("#time-selection").val(next);
-          $("#time-selection").change();
-      });
-
 
       let baseMaps = {
         'background': background
       };
 
-      L.control.layers(baseMaps).addTo(mymap);
+      L.control.layers(baseMaps, layers).addTo(mymap);
 
       L.control.scale().addTo(mymap);
     };
@@ -126,52 +65,16 @@
     }).then(function(text) {
       let layerNames = [];
       let $xml = $($.parseXML(text));
-      $xml.find('Layer').each(function() {
-        if ($(this).text() == 'background')
-          return;
-
-        var title = $(this).find('> Title').text()
-        var name = $(this).find('> Name').text()
-        var times = parse_time_list($(this).find('> Dimension[name="time"]').text());
-        layerNames.push({
-            title: title,
-            name: name,
-            times: times
-        });
+      $xml.find('Layer > Name').each(function() {
+        if ($(this).text() != 'background'){
+          layerNames.push($(this).text());
+        }
       });
       plotLayers(layerNames);
     });
 
-    // This function parse a list of ISO8601 string only, with some limitations:
-    // each element of the list must be a single time string (YYYY-mm-ddTHH:MM:SSZ)
-    // or an interval YYYY-mm-ddTHH:MM:SSZ/YYYY-mm-ddTHH:MM:SSZ/PTX[HM], where
-    // X is the number and the unit can be H or M only.
-    function parse_time_list(timestring) {
-        if (timestring == "")
-            return [];
 
-        var items = timestring.split(",");
-        var times = [];
-        items.forEach(function(item) {
-            if (item.slice(-1) == "Z") {
-                times.push(item);
-            } else {
-                var arr = item.split("/");
-                var start = new Date(arr[0]);
-                var end = new Date(arr[1]);
-                var step_value = parseInt(arr[2].replace(/PT([0-9]+)[HM]/, '$1'));
-                var step_unit = arr[2].slice(-1);
-                if (step_unit == "H") {
-                    step_value = step_value * 60
-                };
-                for (var t = start; t <= end; t = new Date(t.getTime() + step_value * 60000)) {
-                    var s = t.toISOString().replace(/\.000Z$/, "Z");
-                    times.push(s);
-                }
-            }
-        });
-        return times;
-    }
+
   </script>
 </body>
 </html>
