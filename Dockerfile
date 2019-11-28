@@ -1,6 +1,6 @@
 # Build image
 # Use slim python 3 + Magics image as base
-ARG MAGICS_IMAGE=eduardrosert/magics:version-4.2.0
+ARG MAGICS_IMAGE=ecmwf/magics:4.2.4
 FROM ${MAGICS_IMAGE}
 
 RUN set -eux \
