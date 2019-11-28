@@ -196,6 +196,8 @@ class DataLayer(Layer):
 
     def select(self, dims):
         # TODO: select on more dimensions
+        if dims is None:
+            return self._first
         time = dims.get("time", None)
         LOG.info("Look up layer with %s and time %s (%s)" % (self, time, type(time)))
         if time is None:
