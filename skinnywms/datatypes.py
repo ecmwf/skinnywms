@@ -32,18 +32,35 @@ class CRS:
         self.e_lon = e_lon
 
 
+class StyleConfig:
+
+    def __init__(self, verb, config):
+        self.verb = verb
+        self.config = config
+
+    def as_dict(self):
+        return dict(_class=self.__class__.__module__ +
+                    '.' + self.__class__.__name__,
+                    verb=self.verb,
+                    config=self.config)
+
+
 class Style:
 
-    def __init__(self, name, title=None, description=None, legend=None):
+    def __init__(self, name, title=None, description=None, legend=None,
+                 config=None):
         self.name = name
         self.title = title is not None and title or name
         self.description = description is not None and description or name
+        self.config = config
 
     def as_dict(self):
-        return dict(_class=self.__class__.__module__ + '.' + self.__class__.__name__,
+        return dict(_class=self.__class__.__module__ +
+                    '.' + self.__class__.__name__,
                     name=self.name,
                     title=self.title,
-                    description=self.description)
+                    description=self.description,
+                    config=[s.as_dict() for s in self.config])
 
     def adjust_netcdf_plotting(self, params):
         pass
@@ -177,8 +194,11 @@ class DataLayer(Layer):
     def __repr__(self):
         return "DataLayer[%s]" % (self.name,)
 
-    def select(self, time):
+    def select(self, dims):
         # TODO: select on more dimensions
+        if dims is None:
+            return self._first
+        time = dims.get("time", None)
         LOG.info("Look up layer with %s and time %s (%s)" % (self, time, type(time)))
         if time is None:
             field = self._first
@@ -194,10 +214,11 @@ class DataLayer(Layer):
 
 class Availability:
 
-    def __init__(self):
+    def __init__(self, auto_add_plotter_layers=True):
         self._context = None
         self._layers = {}
         self._aliases = {}
+        self._auto_add_plotter_layers = auto_add_plotter_layers
 
     @property
     def context(self):
@@ -206,6 +227,10 @@ class Availability:
     # @property.setter
     def set_context(self, context):
         self._context = weakref.ref(context)
+
+    @property
+    def auto_add_plotter_layers(self):
+        return self._auto_add_plotter_layers
 
     def add_field(self, field):
         # TODO: Use config....
@@ -223,11 +248,11 @@ class Availability:
         # TODO: Sort
         return [l for l in self._layers.values()]
 
-    def layer(self, name, time):
+    def layer(self, name, dims):
         if not self._layers:
             self.load()
 
-        LOG.info("Look up layer with name %s and time %s", name, time)
+        LOG.info("Look up layer with name %s and dims %s", name, dims)
 
         while name in self._aliases:
             name = self._aliases[name]
@@ -236,7 +261,7 @@ class Availability:
             raise errors.LayerNotDefined("Unknown layer '{}'".format(name))
 
         # TODO: select on othe dimenstions as well
-        return self._layers[name].select(time=time)
+        return self._layers[name].select(dims)
 
     def as_dict(self):
         if not self._layers:

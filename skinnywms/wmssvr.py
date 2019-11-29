@@ -11,9 +11,7 @@ import argparse
 
 from flask import Flask, request, Response, render_template, send_file, jsonify
 
-
 from .server import WMSServer
-from .data.fs import Availability
 from .plot.magics import Plotter, Styler
 
 
@@ -23,35 +21,49 @@ demo = os.path.join(os.path.dirname(__file__),
                     'testdata',
                     'sfc.grib')
 
+demo = os.environ.get("SKINNYWMS_DATA_PATH", demo)
+
 parser = argparse.ArgumentParser(description='Simple WMS server')
 
 parser.add_argument('-f', '--path',
                     default=demo,
-                    help='Path to a GRIB or NetCDF file, or a directory containing GRIB and/or NetCDF files.')
+                    help='Path to a GRIB or NetCDF file, or a directory\
+                         containing GRIB and/or NetCDF files.')
 parser.add_argument('--style',
                     default='',
                     help='Path to a directory where to find the styles')
-
 parser.add_argument('--host',
                     default="127.0.0.1",
                     help='Hostname')
 parser.add_argument('--port',
                     default=5000,
                     help='Port number')
+parser.add_argument('--baselayer',
+                    default='',
+                    help='Path to a directory where to find the baselayer')
 
 
 args = parser.parse_args()
 
 if args.style != '':
-    os.environ["MAGICS_STYLE_PATH"] = args.style+ ":ecmwf"
-
-server = WMSServer(
-    Availability(args.path),
-    Plotter(),
-    Styler())
+    os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
 
+mv_layers_conf = os.getenv('ECMWF_MV_LAYERS_CONFIG', '')
 
+if mv_layers_conf == '':
+    from .data.fs import Availability
+    server = WMSServer(
+        Availability(args.path),
+        Plotter(args.baselayer),
+        Styler())
+else:
+    from .data.mvfs import MvAvailability
+    server = WMSServer(
+        MvAvailability(mv_layers_conf),
+        Plotter(),
+        Styler())
+    server.args = args
 
 @application.route('/wms', methods=['GET'])
 def wms():
@@ -73,5 +85,6 @@ def index():
 
 
 def execute():
-  application.run(port = args.port, host=args.host, debug=True, threaded=False)
+
+    application.run(port=args.port, host=args.host, debug=True, threaded=False)
 
