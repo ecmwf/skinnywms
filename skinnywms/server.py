@@ -9,8 +9,6 @@
 import logging
 import os
 import tempfile
-import shutil
-import weakref
 
 
 from skinnywms import errors, protocol
@@ -20,11 +18,11 @@ LOG = logging.getLogger(__name__)
 
 def revert_bbox(bbox):
     minx, miny, maxx, maxy = bbox
-    return [ miny, minx, maxy, maxx]
+    return [miny, minx, maxy, maxx]
 
 
 bounding_box = {
-    "1.3.0_EPSG:4326" : revert_bbox
+    "1.3.0_EPSG:4326": revert_bbox
 }
 
 
@@ -48,22 +46,16 @@ class TmpFile:
         with open(self.fname, 'rb') as f:
             return f.read()
 
-class FileRemover(object):
-    # derived from: https://stackoverflow.com/a/32132035
-    def __init__(self):
-        self.weak_references = dict()  # weak_ref -> filepath to remove
+    def cleanup(self):
+        LOG.debug('Deleting %s' % self.fname)
+        os.unlink(self.fname)
 
-    def cleanup_once_done(self, response, filepath):
-        wr = weakref.ref(response, self._do_cleanup)
-        self.weak_references[wr] = filepath
 
-    def _do_cleanup(self, wr):
-        filepath = self.weak_references[wr]
-        LOG.debug('Deleting %s' % filepath)
-        try:
-            os.remove(filepath)
-        except Exception as exc:
-            LOG.exception('Error while deleting %s : %s', filepath, exc)
+class NoCaching:
+
+    def create_output(self):
+        return TmpFile()
+
 
 class WMSServer:
 
@@ -71,7 +63,7 @@ class WMSServer:
                  availability,
                  plotter,
                  styler,
-                 output=None):
+                 caching=NoCaching()):
 
         self.availability = availability
         self.availability.set_context(self)
@@ -82,7 +74,7 @@ class WMSServer:
         self.styler = styler
         self.styler.set_context(self)
 
-        self.file_remover = FileRemover()
+        self.caching = caching
 
         # For objects to store context
         self.stash = {}
@@ -110,7 +102,7 @@ class WMSServer:
         req = req_orig.lower()
 
         if output is None:
-            output = TmpFile()
+            output = self.caching.create_output()
 
         try:
             LOG.info(req)
@@ -140,7 +132,8 @@ class WMSServer:
 
                 content_type, path = self.get_map(**params)
                 resp = send_file(path, content_type)
-                self.file_remover.cleanup_once_done(resp,path)
+                output.cleanup()
+
                 return resp
 
             elif req == 'getlegendgraphic':
@@ -156,7 +149,8 @@ class WMSServer:
 
                 content_type, path = self.get_legend(**params)
                 resp = send_file(path, content_type)
-                self.file_remover.cleanup_once_done(resp,path)
+                output.cleanup()
+
                 return resp
 
             else:
@@ -167,9 +161,11 @@ class WMSServer:
             LOG.exception('%s(): Error: %s', req, exc)
             content_type = exc.content_type(version)
             content = exc.body(version)
+
         except Exception as exc:
             if reraise:
                 raise
+
             LOG.exception('%s(): Error: %s', req, exc)
             exc = errors.wrap(exc)
             content_type = exc.content_type(version)
@@ -189,6 +185,7 @@ class WMSServer:
                 styles=None,
                 _macro=False,
                 bgcolor=None,
+                dim_index=None,
                 elevation=None,
                 exceptions=None,
                 time=None,
@@ -200,10 +197,13 @@ class WMSServer:
         while len(styles) < len(layers):
             styles.append('')
 
+        # collect the dims, the fields selection is based on this information
+        dims = {'time': time, 'elevation': elevation, 'dim_index': dim_index}
+
         layer_objs = []
         for name in layers:
             try:
-                layer = self.availability.layer(name, time)
+                layer = self.availability.layer(name, dims)
             except errors.LayerNotDefined:
                 layer = self.plotter.layer(name)
 
@@ -211,28 +211,28 @@ class WMSServer:
 
         # Interpret the BBox
 
-        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x) )(bbox)
+        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x))(bbox)
 
         LOG.debug("->{}_{}".format(version, crs))
 
-        path = self.plotter.plot(self,
-                                 output,
-                                 bbox,
-                                 crs,
-                                 format,
-                                 height,
-                                 layer_objs,
-                                 styles,
-                                 version,
-                                 width,
-                                 _macro=_macro,
-                                 bgcolor=bgcolor,
-                                 elevation=elevation,
-                                 exceptions=exceptions,
-                                 time=time,
-                                 transparent=transparent)
+        mime_type, path = self.plotter.plot(self,
+                                            output,
+                                            bbox,
+                                            crs,
+                                            format,
+                                            height,
+                                            layer_objs,
+                                            styles,
+                                            version,
+                                            width,
+                                            _macro=_macro,
+                                            bgcolor=bgcolor,
+                                            elevation=elevation,
+                                            exceptions=exceptions,
+                                            time=time,
+                                            transparent=transparent)
 
-        return format, path
+        return mime_type, path
 
     def get_legend(self,
                    output,
@@ -274,7 +274,8 @@ class WMSServer:
         layers = list(self.availability.layers())
         LOG.info("Layers are %s", layers)
 
-        layers += list(self.plotter.layers())
+        if self.availability.auto_add_plotter_layers:
+            layers += list(self.plotter.layers())
 
         layers = sorted(layers, key=lambda k: k.zindex)
 

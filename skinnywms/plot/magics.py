@@ -91,6 +91,21 @@ class StaticLayer(datatypes.Layer):
     def __repr__(self):
         return 'StaticLayer[%s]' % (self.name,)
 
+class UserBaseLayer(StaticLayer): 
+
+    def render(self, context, driver, style):
+        return [driver.mcoast(map_user_layer = "on",
+        map_user_layer_name =self.layer,
+        map_user_layer_colour = "charcoal",
+        map_user_layer_thickness = 1,
+        map_grid = False,
+        map_coastline_colour = "none"
+
+      )
+    ]
+
+    def __repr__(self):
+        return 'UserBaseLayer[%s]' % (self.name,)
 
 class MagicsWebStyle(datatypes.Style):
     pass
@@ -104,21 +119,37 @@ class Plotter(datatypes.Plotter):
 
     log = logging.getLogger(__name__)
 
-
-
-    def __init__(self, styles=None):
+    def __init__(self, baselayer=None, styles=None):
         if styles is None:
             styles = {}
         self._styles = styles
-        self._layers = {
-            layer.name: layer
-            for layer in [
+        layers = [
                 StaticLayer('foreground', title='Foreground', zindex=99999),
                 StaticLayer('background', title='Background', zindex=-99999),
                 StaticLayer('grid', title='Grid', zindex=99999),
                 StaticLayer('boundaries', title='Boundaries', zindex=99999),
+                
             ]
+
+        if baselayer :
+            name = os.path.basename(baselayer)
+            try :
+                name = os.path.basename(baselayer)
+            except:
+                name = "user defined baselayer"
+            base = UserBaseLayer(name, title=name, zindex=99999)
+            base.layer = baselayer
+            layers.append(base)
+
+       
+
+        self._layers = {
+            layer.name: layer for layer in layers
         }
+
+
+
+
 
     def layers(self):
         for layer in self._layers.values():
@@ -155,14 +186,14 @@ class Plotter(datatypes.Plotter):
             lon_vertical = float(crs.split(':')[2])
         elif crs.startswith('EPSG:32761:'):
             crs_name = "polar_south"
-            lon_vertical = float(crs.split(':')[2]) 
+            lon_vertical = float(crs.split(':')[2])
         elif crs == 'EPSG:32761':
             crs_name = 'EPSG:32761'
         else:
             try:
                 crs = _CRSS[crs]
                 crs_name = crs.name
-            except KeyError:               
+            except KeyError:
                 raise ValueError("Unsupported CRS '{}'".format(crs))
 
         try:
@@ -181,7 +212,7 @@ class Plotter(datatypes.Plotter):
             macro.silent()
 
             coordinates_system = {
-                "EPSG:4326" : "latlon"
+                "EPSG:4326": "latlon"
             }
 
             map_params = {
@@ -203,7 +234,7 @@ class Plotter(datatypes.Plotter):
                 'subpage_y_position': 0.,
                 'output_width': width,
                 'page_frame': 'off',
-                'skinny_mode' :  "on", 
+                'skinny_mode': "on",
                 'page_id_line': 'off'}
 
             # add extra settings for polar stereographic projection when
@@ -231,11 +262,11 @@ class Plotter(datatypes.Plotter):
                 args += layer.render(context, macro, style)
 
             if _macro:
-                return self.macro_text(args,
-                                       output.target('.py'),
-                                       getattr(context, 'data_url', None),
-                                       layers,
-                                       styles)
+                return 'text/x-python', self.macro_text(args,
+                                                        output.target('.py'),
+                                                        getattr(context, 'data_url', None),
+                                                        layers,
+                                                        styles)
 
             # self.log.debug('plot(): Calling macro.plot(%s)', args)
             try:
@@ -247,22 +278,19 @@ class Plotter(datatypes.Plotter):
             self.log.debug('plot(): Size of %s: %s',
                            output_fname, os.stat(output_fname).st_size)
 
-            return output_fname
-
+            return format, output_fname
 
     def legend(self,
-             context,
-             output,
-             format,
-             height,
-             layer,
-             style,
-             version,
-             width,
-             transparent
-             ):
-
-
+               context,
+               output,
+               format,
+               height,
+               layer,
+               style,
+               version,
+               width,
+               transparent
+               ):
 
         try:
             magics_format = MAGICS_OUTPUT_TYPES[format]
@@ -275,8 +303,8 @@ class Plotter(datatypes.Plotter):
         with LOCK:
 
             # Magics is talking in cm.
-            width_cm = float(width )/ 40.
-            height_cm = float(height)/ 40.
+            width_cm = float(width) / 40.
+            height_cm = float(height) / 40.
 
             args = [
                 macro.output(output_formats=[magics_format],
@@ -285,44 +313,42 @@ class Plotter(datatypes.Plotter):
                              output_width=width,
                              output_name=path),
                 macro.mmap(
-                           subpage_frame='off',
-                           page_x_length=width_cm,
-                           page_y_length=height_cm,
-                           super_page_x_length=width_cm,
-                           super_page_y_length=height_cm,
-                           subpage_x_length=width_cm,
-                           subpage_y_length=height_cm,
-                           subpage_x_position=0.,
-                           subpage_y_position=0.,
-                           output_width=width,
-                           page_frame='off',
-                           page_id_line='off',),
+                    subpage_frame='off',
+                    page_x_length=width_cm,
+                    page_y_length=height_cm,
+                    super_page_x_length=width_cm,
+                    super_page_y_length=height_cm,
+                    subpage_x_length=width_cm,
+                    subpage_y_length=height_cm,
+                    subpage_x_position=0.,
+                    subpage_y_position=0.,
+                    output_width=width,
+                    page_frame='off',
+                    page_id_line='off',),
 
             ]
 
-
             contour = layer.style(style, )
 
-            args += layer.render(context, macro, contour, { 'legend' : 'on', "contour_legend_only" : True})
+            args += layer.render(context, macro, contour, {'legend': 'on', "contour_legend_only": True})
 
             legend_font_size = "25%"
-            if width_cm < height_cm :
+            if width_cm < height_cm:
                 legend_font_size = "5%"
 
-
             legend = macro.mlegend(
-                  legend_title = "on",
-                  legend_title_text = layer.title,
-                  legend_display_type = "continuous",
-                  legend_box_mode = "positional",
-                  legend_only = True,
-                  legend_box_x_position = 0.00,
-                  legend_box_y_position = 0.00,
-                  legend_box_x_length = width_cm,
-                  legend_box_y_length = height_cm,
-                  legend_box_blanking = not transparent,
-                  legend_text_font_size = legend_font_size,
-                  legend_text_colour = "navy",
+                legend_title="on",
+                legend_title_text=layer.title,
+                legend_display_type="continuous",
+                legend_box_mode="positional",
+                legend_only=True,
+                legend_box_x_position=0.00,
+                legend_box_y_position=0.00,
+                legend_box_x_length=width_cm,
+                legend_box_y_length=height_cm,
+                legend_box_blanking=not transparent,
+                legend_text_font_size=legend_font_size,
+                legend_text_colour="navy",
 
             )
 
@@ -332,7 +358,6 @@ class Plotter(datatypes.Plotter):
             except Exception as e:
                 self.log.exception('Magics error: %s', e)
                 raise
-
 
             self.log.debug('plot(): Size of %s: %s',
                            output_fname, os.stat(output_fname).st_size)
