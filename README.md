@@ -118,7 +118,7 @@ Lead developers:
 Main contributors:
 
 - `Stephan Siemen <https://github.com/stephansiemen>`_ - ECMWF
-- `Milana Vuckovic`- ECMWF
+- `Milana Vuckovic <https://github.com/milanavuckovic>` - ECMWF
 
 
 License
