@@ -246,12 +246,34 @@ class MvAvailability(datatypes.Availability):
         except IOError as e:
             raise('Could not open config file: {}. Error: {}'.format(
                 self._path, e))
+    
+    # Load a layer from the yaml config file
+    def load_layer(self, name):
+        try:
+            with open(self._path, 'rt') as f:
+                conf = yaml.safe_load(f)
+                for conf_def in conf.get('layers'):
+                    layer = conf_def.get('layer', None)
+                    if layer and layer.get('name','') == name:                       
+                        layer_id = len(self._layers) + 1
+                        self.add_layer(layer_id, layer)             
+        except IOError as e:
+            raise('Could not open config file: {}. Error: {}'.format(
+                self._path, e))
 
     def add_file(self, path):
         pass
 
     def add_field(self, field):
         pass
+
+    def layer(self, name, dims):
+        try:
+            return super().layer(name, dims)
+        except errors.LayerNotDefined:    
+            self.load_layer(name)
+        
+        return super().layer(name, dims)
 
     def as_dict(self):
         d = super().as_dict()
