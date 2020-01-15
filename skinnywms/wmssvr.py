@@ -13,6 +13,7 @@ from flask import Flask, request, Response, render_template, send_file, jsonify
 
 from .server import WMSServer
 from .plot.magics import Plotter, Styler
+from .data.fs import Availability
 
 
 application = Flask(__name__)
@@ -48,22 +49,11 @@ args = parser.parse_args()
 if args.style != '':
     os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
+server = WMSServer(
+    Availability(args.path),
+    Plotter(args.baselayer),
+    Styler())
 
-mv_layers_conf = os.getenv('ECMWF_MV_LAYERS_CONFIG', '')
-
-if mv_layers_conf == '':
-    from .data.fs import Availability
-    server = WMSServer(
-        Availability(args.path),
-        Plotter(args.baselayer),
-        Styler())
-else:
-    from .data.mvfs import MvAvailability
-    server = WMSServer(
-        MvAvailability(mv_layers_conf),
-        Plotter(),
-        Styler())
-    server.args = args
 
 @application.route('/wms', methods=['GET'])
 def wms():
@@ -85,6 +75,5 @@ def index():
 
 
 def execute():
-
     application.run(port=args.port, host=args.host, debug=True, threaded=False)
 
