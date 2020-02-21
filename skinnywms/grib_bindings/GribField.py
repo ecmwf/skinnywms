@@ -261,10 +261,44 @@ class SingleLevel(object):
         pass
 
 
+# Section 4 - Code Table 5 : Fixed surface types and units
+# https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/5
+# e.g. /usr/local/share/eccodes/definitions/grib2/tables/0/4.5.table
+# e.g. /usr/local/share/eccodes/definitions/grib2/tables/20/4.5.table
 LEVEL_TYPES = {
+    # ECMWF
+    # ======
+    # 100 pl Isobaric surface (Pa)
     "pl": PressureLevel(),
+
+    # 1 sfc Ground or water surface 
+    # 8 sfc Nominal top of the atmosphere
+    # 101 sfc Mean sea level
+    # 103 sfc Specified height level above ground (m)
+    # 106 sfc Depth below land surface (m)
     "sfc": SingleLevel(),
-    "ml": ModelLevel()
+
+    # 111 ml Eta level
+    "ml": ModelLevel(),
+
+    # DWD
+    # ======
+    # 100 P Isobaric surface (Pa)
+    "P": PressureLevel(),
+
+    # 1 G Ground or water surface (-)
+    # 8 AU Nominal top of the atmosphere (-)
+    # 101 MSL Mean sea level
+    # 103 HG Specified height level above ground (m)
+    # 106 B Depth below land surface (m)
+    "G": SingleLevel(),
+    "AU": SingleLevel(),
+    "MSL": SingleLevel(),
+    "HG": SingleLevel(),
+    "B": SingleLevel(),
+
+    # 111 111 Eta level (-)
+    "111": ModelLevel()
 }
 
 
@@ -317,8 +351,8 @@ class GribField(object):
         if isinstance(step, str):
             # It's a range, use end of range
             step = int(step.split('-')[-1])
-
-        return self.base_date + datetime.timedelta(hours=step)
+            
+        return self.base_date + self.get_timedelta(step)
 
     @property
     def base_date(self):
@@ -357,6 +391,71 @@ class GribField(object):
             return grib_get(self._handle, name)
         except Exception:
             return None
+    
+    def get_timedelta(self, step):
+        # see Section 4 - Code Table 4 : Indicator of unit of time range
+        # https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/4
+        # e.g. /usr/local/share/eccodes/definitions/grib2/tables/20/4.4.table
+        # 0 m Minute 
+        # 1 h Hour 
+        # 2 D Day 
+        # 3 M Month 
+        # 4 Y Year 
+        # 5 10Y Decade (10 years) 
+        # 6 30Y Normal (30 years) 
+        # 7 C Century (100 years) 
+        # # 8-9 Reserved 
+        # 10 3h 3 hours 
+        # 11 6h 6 hours 
+        # 12 12h 12 hours 
+        # 13 s Second 
+        # # 14-191 Reserved 
+        # # 192-254 Reserved for local use 
+        # 255 255 Missing 
+        if self.stepUnits == 0:
+            # Minute
+            return datetime.timedelta(minutes=step)
+        elif self.stepUnits == 1:
+            # Hour
+            return datetime.timedelta(hours=step)
+        elif self.stepUnits == 2:
+            # Day
+            return datetime.timedelta(days=step)
+        elif self.stepUnits == 3:
+            # Month
+            return datetime.timedelta(months=step)
+        elif self.stepUnits == 4:
+            # Year
+            return datetime.timedelta(years=step)
+        elif self.stepUnits == 5:
+            # Decade (10 years)
+            return datetime.timedelta(years=10*step)
+        elif self.stepUnits == 6:
+            # Normal (30 years)
+            return datetime.timedelta(years=30*step)
+        elif self.stepUnits == 7:
+            # Century (100 years)
+            return datetime.timedelta(years=100*step)
+        # 8 - 9 Reserved 
+        elif self.stepUnits == 10:
+            # 3 hours
+            return datetime.timedelta(hours=3*step)
+        elif self.stepUnits == 11:
+            # 6 hours
+            return datetime.timedelta(hours=6*step)
+        elif self.stepUnits == 12:
+            # 12 hours
+            return datetime.timedelta(hours=12*step)
+        elif self.stepUnits == 13:
+            # Second
+            return datetime.timedelta(seconds=step)
+        elif self.stepUnits == 255:
+            # Missing
+            # fall back to hours
+            return datetime.timedelta(hours=step)
+        else:
+            # fall back to hours
+            return datetime.timedelta(hours=step)
 
     def coordinates(self, coords, combine_order, attributes, dims):
 
