@@ -495,5 +495,10 @@ def grib_pl_array(handle, name="pl"):
     return grib_get_long_array(handle, name)
 
 
+def grib_get_code(handle, name):
+    result = ctypes.c_long(0)
+    grib_get_long(handle, name, result)
+    return result.value
+
 if __name__ == "__main__":
     print(grib_get_gaussian_latitudes(320))
