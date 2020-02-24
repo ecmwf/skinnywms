@@ -300,10 +300,11 @@ class GribField(object):
             raise Exception("Unsupported grid type '{}' in grib {}".format(self.gridType, path))
         
         try:
-            self._levtype = LEVEL_TYPES[self.levtype]
+            # try mapping by name
             if self.levtype in LEVEL_TYPES:
                 self._levtype = LEVEL_TYPES[self.levtype]
             else:
+                # try mapping by code
                 levtype_code = self.get_code("levtype")
                 self._levtype = LEVEL_TYPE_CODES[levtype_code]
         except KeyError:
