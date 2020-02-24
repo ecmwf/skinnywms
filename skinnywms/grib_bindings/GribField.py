@@ -263,8 +263,6 @@ class SingleLevel(object):
 
 # Section 4 - Code Table 5 : Fixed surface types and units
 # https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/5
-# e.g. /usr/local/share/eccodes/definitions/grib2/tables/0/4.5.table
-# e.g. /usr/local/share/eccodes/definitions/grib2/tables/20/4.5.table
 LEVEL_TYPES = {
     # ECMWF
     # ======
@@ -395,23 +393,6 @@ class GribField(object):
     def get_timedelta(self, step):
         # see Section 4 - Code Table 4 : Indicator of unit of time range
         # https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/4
-        # e.g. /usr/local/share/eccodes/definitions/grib2/tables/20/4.4.table
-        # 0 m Minute 
-        # 1 h Hour 
-        # 2 D Day 
-        # 3 M Month 
-        # 4 Y Year 
-        # 5 10Y Decade (10 years) 
-        # 6 30Y Normal (30 years) 
-        # 7 C Century (100 years) 
-        # # 8-9 Reserved 
-        # 10 3h 3 hours 
-        # 11 6h 6 hours 
-        # 12 12h 12 hours 
-        # 13 s Second 
-        # # 14-191 Reserved 
-        # # 192-254 Reserved for local use 
-        # 255 255 Missing 
         if self.stepUnits == 0:
             # Minute
             return datetime.timedelta(minutes=step)
@@ -449,6 +430,7 @@ class GribField(object):
         elif self.stepUnits == 13:
             # Second
             return datetime.timedelta(seconds=step)
+        # 192-254 Reserved for local use
         elif self.stepUnits == 255:
             # Missing
             # fall back to hours
