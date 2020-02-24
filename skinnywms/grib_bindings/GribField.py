@@ -11,7 +11,7 @@ import datetime
 import numpy as np
 
 from .bindings import grib_handle_delete, grib_get, grib_values
-from .bindings import grib_get_keys_values, grib_get_gaussian_latitudes, grib_pl_array, grib_get_size
+from .bindings import grib_get_keys_values, grib_get_gaussian_latitudes, grib_pl_array, grib_get_size, grib_get_code
 
 
 REGULAR_CACHE = {}
@@ -263,40 +263,20 @@ class SingleLevel(object):
 
 # Section 4 - Code Table 5 : Fixed surface types and units
 # https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/5
+LEVEL_TYPE_CODES = {
+    1: SingleLevel(),       # 1 sfc Ground or water surface
+    8: SingleLevel(),       # 8 sfc Nominal top of the atmosphere 
+    100: PressureLevel(),   # 100 pl Isobaric surface (Pa)
+    101: SingleLevel(),     # 101 sfc Mean sea level
+    103: SingleLevel(),     # 103 sfc Specified height level above ground (m)
+    106: SingleLevel(),     # 106 sfc Depth below land surface (m)
+    111: ModelLevel(),     # 111 ml Eta level
+}
+
 LEVEL_TYPES = {
-    # ECMWF
-    # ======
-    # 100 pl Isobaric surface (Pa)
     "pl": PressureLevel(),
-
-    # 1 sfc Ground or water surface 
-    # 8 sfc Nominal top of the atmosphere
-    # 101 sfc Mean sea level
-    # 103 sfc Specified height level above ground (m)
-    # 106 sfc Depth below land surface (m)
     "sfc": SingleLevel(),
-
-    # 111 ml Eta level
-    "ml": ModelLevel(),
-
-    # DWD
-    # ======
-    # 100 P Isobaric surface (Pa)
-    "P": PressureLevel(),
-
-    # 1 G Ground or water surface (-)
-    # 8 AU Nominal top of the atmosphere (-)
-    # 101 MSL Mean sea level
-    # 103 HG Specified height level above ground (m)
-    # 106 B Depth below land surface (m)
-    "G": SingleLevel(),
-    "AU": SingleLevel(),
-    "MSL": SingleLevel(),
-    "HG": SingleLevel(),
-    "B": SingleLevel(),
-
-    # 111 111 Eta level (-)
-    "111": ModelLevel()
+    "ml": ModelLevel()
 }
 
 
@@ -321,6 +301,11 @@ class GribField(object):
         
         try:
             self._levtype = LEVEL_TYPES[self.levtype]
+            if self.levtype in LEVEL_TYPES:
+                self._levtype = LEVEL_TYPES[self.levtype]
+            else:
+                levtype_code = self.get_code("levtype")
+                self._levtype = LEVEL_TYPE_CODES[levtype_code]
         except KeyError:
             raise Exception("Unsupported level type '{}' in grib {}".format(self.levtype, path))
 
@@ -389,7 +374,10 @@ class GribField(object):
             return grib_get(self._handle, name)
         except Exception:
             return None
-    
+
+    def get_code(self, name):
+        return grib_get_code(self._handle, name)
+
     def get_timedelta(self, step):
         # see Section 4 - Code Table 4 : Indicator of unit of time range
         # https://apps.ecmwf.int/codes/grib/format/grib2/ctables/4/4
