@@ -24,7 +24,10 @@ def as_datetime(self, time):
     # https://stackoverflow.com/questions/29753060/how-to-convert-numpy-datetime64-into-datetime
 
     # Lose the nano-seconds....
-    return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+    try:
+        return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+    except:
+        return datetime.datetime.now()
 
 
 def as_level(self, level):

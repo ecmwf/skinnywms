@@ -9,6 +9,7 @@ from typing import Dict
 from skinnywms import datatypes
 from skinnywms.server import WMSServer
 from skinnywms.fields.NetCDFField import NetCDFReader
+from skinnywms.fields.GeoJSONField import GeoJSONReader
 from skinnywms.fields.GRIBField import GRIBReader
 
 __all__ = [
@@ -84,12 +85,24 @@ READERS:Dict[bytes,datatypes.FieldReader] = {
     b"CDF\x02": NetCDFReader,
 }
 
+EXTENSIONS:Dict[str,datatypes.FieldReader] = {
+    ".geojson": GeoJSONReader,
+}
+
 
 def _reader(context:WMSServer, path:str) -> datatypes.FieldReader: # GRIBReader | NetCDFReader
+
+    print("FOUND-->", path)
     with open(path, "rb") as f:
         header = f.read(4)
 
     if header in READERS:
         return READERS[header](context, path)
+
+    # Now we try the extension to try to detect a geosson file
+    filename, extension = os.path.splitext(path)
+    print("FOUND-->", extension)
+    if extension in EXTENSIONS:
+        return EXTENSIONS[extension](context, path)
 
     raise ValueError("Unsupported file {} (header={})".format(path, header))

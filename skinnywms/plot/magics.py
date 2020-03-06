@@ -587,6 +587,7 @@ class Styler(datatypes.Styler):
             contour_automatic_setting="style_name",
             contour_style_name=style.name,
         )
+
     def winds(self, field, driver, style, legend={}):
 
         if self.user_style:
