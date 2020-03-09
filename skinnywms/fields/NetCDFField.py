@@ -113,9 +113,14 @@ class NetCDFField(datatypes.Field):
         # if level:
         #     self.name += '_' + str(level)
 
+        magics_prefix = context.magics_prefix
+        
+
         self.title = getattr(ds[self.variable], 'long_name',
                              getattr(ds[self.variable], 'standard_name',
                                      self.variable))
+
+        self.legend_title = getattr(ds[self.variable], '{}_legend_title_text'.format(magics_prefix), self.title)
 
         # if level:
         #     self.title += ' @ ' + str(level)
@@ -184,6 +189,7 @@ class NetCDFReader:
     def __init__(self, context, path):
         self.path = path
         self.context = context
+        self.log.info("__init__")
 
     def get_fields(self):
         with closing(xr.open_mfdataset(self.path)) as ds:
