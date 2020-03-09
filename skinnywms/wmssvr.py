@@ -42,6 +42,9 @@ parser.add_argument('--port',
 parser.add_argument('--baselayer',
                     default='',
                     help='Path to a directory where to find the baselayer')
+parser.add_argument('--magics-prefix',
+                    default='magics',
+                    help='prefix used to pass information to magics')
 
 
 args = parser.parse_args()
@@ -53,6 +56,9 @@ server = WMSServer(
     Availability(args.path),
     Plotter(args.baselayer),
     Styler())
+
+
+server.magics_prefix = args.magics_prefix
 
 
 @application.route('/wms', methods=['GET'])
