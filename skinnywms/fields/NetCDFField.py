@@ -113,7 +113,11 @@ class NetCDFField(datatypes.Field):
         # if level:
         #     self.name += '_' + str(level)
 
-        magics_prefix = context.magics_prefix
+
+        magics_prefix = "magics"
+
+        if  hasattr(context, magics_prefix):
+            magics_prefix = context.magics_prefix
         
 
         self.title = getattr(ds[self.variable], 'long_name',
