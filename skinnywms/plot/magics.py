@@ -338,7 +338,7 @@ class Plotter(datatypes.Plotter):
 
             legend = macro.mlegend(
                 legend_title="on",
-                legend_title_text=layer.title,
+                legend_title_text=layer.legend_title,
                 legend_display_type="continuous",
                 legend_box_mode="positional",
                 legend_only=True,
@@ -348,7 +348,7 @@ class Plotter(datatypes.Plotter):
                 legend_box_y_length=height_cm,
                 legend_box_blanking=not transparent,
                 legend_text_font_size=legend_font_size,
-                legend_text_colour="navy",
+                legend_text_colour="white",
 
             )
 
