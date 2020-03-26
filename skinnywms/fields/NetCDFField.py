@@ -199,6 +199,7 @@ class NetCDFReader:
         skip = set()
 
         for name in ds.data_vars:
+
             v = ds[name]
             skip.update([c for c in getattr(v, 'coordinates', '').split(' ')])
             skip.update([c for c in getattr(v, 'bounds', '').split(' ')])
@@ -209,12 +210,18 @@ class NetCDFReader:
                 continue
 
             v = ds[name]
+            print ("NAME--->", name)
+
 
             coordinates = []
 
             # self.log.info('Scanning file: %s var=%s coords=%s', self.path, name, v.coords)
 
             info = [value for value in v.coords if value not in v.dims]
+
+            print ("FGFGHFGHFH", info)
+            has_lon = False
+            has_lat = False
 
             for coord in v.coords:
                 c = ds[coord]
@@ -224,8 +231,10 @@ class NetCDFReader:
                 standard_name = getattr(c, 'standard_name', None)
                 axis = getattr(c, 'axis', None)
                 long_name = getattr(c, 'long_name', None)
+                print ("standard_name={}".format(standard_name))
 
                 use = False
+               
 
                 if standard_name in ('longitude', 'projection_x_coordinate') or (long_name == 'longitude'):
                     has_lon = True
