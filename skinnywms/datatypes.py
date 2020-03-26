@@ -91,6 +91,7 @@ class Layer:
     def __init__(self, name, title, zindex=0, description=None, keywords=[]):
         self.name = name
         self.title = title
+        self.legend_title = self.title
         self.description = description
         self.zindex = zindex
 
