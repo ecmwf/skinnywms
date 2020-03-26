@@ -216,7 +216,6 @@ class NetCDFReader:
                 continue
 
             v = ds[name]
-            print ("NAME--->", name)
 
 
             coordinates = []
@@ -225,7 +224,7 @@ class NetCDFReader:
 
             info = [value for value in v.coords if value not in v.dims]
 
-            print ("FGFGHFGHFH", info)
+            
             has_lon = False
             has_lat = False
 
@@ -237,8 +236,7 @@ class NetCDFReader:
                 standard_name = getattr(c, 'standard_name', None)
                 axis = getattr(c, 'axis', None)
                 long_name = getattr(c, 'long_name', None)
-                print ("standard_name={}".format(standard_name))
-
+                
                 use = False
                
 
