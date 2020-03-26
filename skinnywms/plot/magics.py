@@ -336,9 +336,15 @@ class Plotter(datatypes.Plotter):
             if width_cm < height_cm:
                 legend_font_size = "5%"
 
+
+            legend_title = layer.title
+            if  hasattr(layer, legend_title):
+                legend_title = layer.legend_title
+
+
             legend = macro.mlegend(
                 legend_title="on",
-                legend_title_text=layer.legend_title,
+                legend_title_text=legend_title,
                 legend_display_type="continuous",
                 legend_box_mode="positional",
                 legend_only=True,
