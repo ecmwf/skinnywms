@@ -97,11 +97,11 @@ class OceanLayer(StaticLayer):
 
     def render(self, context, driver, style):
         return [driver.mcoast( 
-        map_coastline_sea_shade_colour = "#DDDDDD", 
+        map_coastline_sea_shade_colour = "#f2f2f2", 
         map_grid =  "off", 
         map_coastline_sea_shade =  "on", 
         map_label = "off", 
-        map_coastline_colour =  "#DDDDDD",
+        map_coastline_colour =  "#f2f2f2",
         map_coastline_resolution = 'medium')]
 
     def __repr__(self):
