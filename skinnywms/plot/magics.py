@@ -91,6 +91,22 @@ class StaticLayer(datatypes.Layer):
     def __repr__(self):
         return 'StaticLayer[%s]' % (self.name,)
 
+class OceanLayer(StaticLayer):
+
+    
+
+    def render(self, context, driver, style):
+        return [driver.mcoast( 
+        map_coastline_sea_shade_colour = "#DDDDDD", 
+        map_grid =  "off", 
+        map_coastline_sea_shade =  "on", 
+        map_label = "off", 
+        map_coastline_colour =  "#DDDDDD",
+        map_coastline_resolution = 'medium')]
+
+    def __repr__(self):
+        return 'OceanLayer[%s]' % (self.name,)
+
 class UserBaseLayer(StaticLayer): 
 
     def render(self, context, driver, style):
@@ -128,6 +144,7 @@ class Plotter(datatypes.Plotter):
                 StaticLayer('background', title='Background', zindex=-99999),
                 StaticLayer('grid', title='Grid', zindex=99999),
                 StaticLayer('boundaries', title='Boundaries', zindex=99999),
+                OceanLayer('oceans', title='Oceans', zindex=99999),
                 
             ]
 
