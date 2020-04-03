@@ -11,7 +11,7 @@ from skinnywms.fields.NetCDFField import NetCDFReader
 from skinnywms.fields.GRIBField import GRIBReader
 
 __all__ = [
-    'Availability',
+    "Availability",
 ]
 
 LOCK = threading.Lock()
@@ -46,7 +46,9 @@ class Availability(datatypes.Availability):
             elif os.path.isfile(self._path):
                 self.add_file(self._path)
             else:
-                raise NotImplementedError("%s is neither a file not  a directory" % (self._path,))
+                raise NotImplementedError(
+                    "%s is neither a file not  a directory" % (self._path,)
+                )
 
             self._loaded = True
 
@@ -55,7 +57,7 @@ class Availability(datatypes.Availability):
         try:
             reader = _reader(self.context, path)
         except ValueError as exc:
-            self.log.info('Skipping file %s: %s', path, exc)
+            self.log.info("Skipping file %s: %s", path, exc)
             self._paths[path] = [traceback.format_exc()]
             return
 
@@ -73,18 +75,18 @@ class Availability(datatypes.Availability):
 
 
 READERS = {
-    b'GRIB': GRIBReader,
-    b'\x89HDF': NetCDFReader,
-    b'CDF\x01': NetCDFReader,
-    b'CDF\x02': NetCDFReader,
+    b"GRIB": GRIBReader,
+    b"\x89HDF": NetCDFReader,
+    b"CDF\x01": NetCDFReader,
+    b"CDF\x02": NetCDFReader,
 }
 
 
 def _reader(context, path):
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         header = f.read(4)
 
     if header in READERS:
         return READERS[header](context, path)
 
-    raise ValueError('Unsupported file {} (header={})'.format(path, header))
+    raise ValueError("Unsupported file {} (header={})".format(path, header))
