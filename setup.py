@@ -25,7 +25,7 @@ def read(fname):
     return io.open(file_path, encoding="utf-8").read()
 
 
-version = "0.5.2"
+version = "0.5.3"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
