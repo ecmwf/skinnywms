@@ -14,10 +14,9 @@ from .GribField import GribField
 
 
 class GribFile(object):
-
     def __init__(self, path):
 
-        if path.startswith('~'):
+        if path.startswith("~"):
             path = os.path.expanduser(path)
 
         self.path = path

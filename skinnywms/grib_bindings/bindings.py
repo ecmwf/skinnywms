@@ -17,14 +17,16 @@ from functools import partial
 
 lib = ctypes.util.find_library("eccodes")
 
-ecmwf_lib = os.path.join(os.environ.get("ECCODES_LIB_DIR",""), "libeccodes.so")
-ecmwf_lib_mac = os.path.join(
-    os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.dylib")
+ecmwf_lib = os.path.join(os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.so")
+ecmwf_lib_mac = os.path.join(os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.dylib")
 
 if lib is None:
-    for lib in ('/opt/ecmwf/eccodes/lib/libeccodes.so',
-                '/usr/local/lib/libeccodes.dylib',
-                ecmwf_lib, ecmwf_lib_mac):
+    for lib in (
+        "/opt/ecmwf/eccodes/lib/libeccodes.so",
+        "/usr/local/lib/libeccodes.dylib",
+        ecmwf_lib,
+        ecmwf_lib_mac,
+    ):
         if os.path.exists(lib):
             break
 
@@ -33,7 +35,7 @@ libc = ctypes.CDLL(ctypes.util.find_library("c"))
 
 
 class FILE(ctypes.Structure):
-    pass 
+    pass
 
 
 FILE_p = ctypes.POINTER(FILE)
@@ -92,11 +94,15 @@ if sys.version_info[0] > 2:
     char_to_string = _char_to_string
     string_to_char = _string_to_char
 else:
-    def convert_strings(x): return x
 
-    def char_to_string(x): return x
+    def convert_strings(x):
+        return x
 
-    def string_to_char(x): return x
+    def char_to_string(x):
+        return x
+
+    def string_to_char(x):
+        return x
 
 
 ####################################################################
@@ -142,7 +148,6 @@ c_size_t_p = c_uint_p
 
 ####################################################################
 def checked_error_in_last_paramater(fn):
-
     def wrapped(*args):
         err = c_int(0)
         err_p = ctypes.cast(ctypes.addressof(err), c_int_p)
@@ -158,7 +163,6 @@ def checked_error_in_last_paramater(fn):
 
 
 def checked_return_code(fn):
-
     def wrapped(*args):
         err = fn(*args)
         if err:
@@ -169,8 +173,8 @@ def checked_return_code(fn):
 
 ####################################################################
 
-def return_type(fn, ctype):
 
+def return_type(fn, ctype):
     def wrapped(*args):
         result = ctype()
         result_p = ctypes.cast(ctypes.addressof(result), ctypes.POINTER(ctype))
@@ -180,6 +184,7 @@ def return_type(fn, ctype):
         return result.value
 
     return wrapped
+
 
 ####################################################################
 
@@ -198,7 +203,7 @@ grib_handle_new_from_message_copy.argtypes = (grib_context_p, c_void_p, c_size_t
 
 grib_handle_delete = dll.grib_handle_delete
 grib_handle_delete.restype = None
-grib_handle_delete.argtypes = (grib_handle_p, )
+grib_handle_delete.argtypes = (grib_handle_p,)
 
 ####################################################################
 
@@ -213,7 +218,7 @@ GRIB_KEYS_ITERATOR_ALL_KEYS = 0
 
 grib_keys_iterator_delete = dll.grib_keys_iterator_delete
 grib_keys_iterator_delete.restype = None
-grib_keys_iterator_delete.argtypes = (grib_keys_iterator_p, )
+grib_keys_iterator_delete.argtypes = (grib_keys_iterator_p,)
 
 ####################################################################
 grib_keys_iterator_next = dll.grib_keys_iterator_next
@@ -227,7 +232,11 @@ grib_keys_iterator_get_name = convert_strings(grib_keys_iterator_get_name)
 ####################################################################
 _grib_keys_iterator_get_string = dll.grib_keys_iterator_get_string
 _grib_keys_iterator_get_string.restype = c_int
-_grib_keys_iterator_get_string.argtypes = (grib_keys_iterator_p, c_char_p, c_size_t_p,)
+_grib_keys_iterator_get_string.argtypes = (
+    grib_keys_iterator_p,
+    c_char_p,
+    c_size_t_p,
+)
 
 _grib_keys_iterator_get_string = checked_return_code(_grib_keys_iterator_get_string)
 
@@ -253,6 +262,7 @@ def grib_iterate(handle, namespace):
 
 def grib_get_keys_values(handle, namespace):
     return dict(grib_iterate(handle, namespace))
+
 
 ####################################################################
 
@@ -317,6 +327,7 @@ _grib_get_long_array = checked_return_code(_grib_get_long_array)
 
 ####################################################################
 
+
 def grib_get_bytes(handle, name):
     raise Exception("Not implemented")
 
@@ -334,7 +345,7 @@ grib_get_native_type = return_type(grib_get_native_type, c_int)
 
 grib_get_error_message = dll.grib_get_error_message
 grib_get_error_message.restype = c_char_p
-grib_get_error_message.argtypes = (c_int, )
+grib_get_error_message.argtypes = (c_int,)
 grib_get_error_message = convert_strings(grib_get_error_message)
 
 ####################################################################
@@ -357,8 +368,8 @@ def grib_get_gaussian_latitudes(N):
 
 ####################################################################
 
-class GribError(Exception):
 
+class GribError(Exception):
     def __init__(self, err):
         super(GribError, self).__init__("%s (%s)" % (grib_get_error_message(err), err))
 
@@ -368,15 +379,18 @@ grib_handle_new_from_file = checked_error_in_last_paramater(grib_handle_new_from
 
 ####################################################################
 grib_handle_new_from_message_copy = partial(grib_handle_new_from_message_copy, None)
-grib_handle_new_from_message_copy = checked_error_in_last_paramater(grib_handle_new_from_message_copy)
+grib_handle_new_from_message_copy = checked_error_in_last_paramater(
+    grib_handle_new_from_message_copy
+)
 
 ####################################################################
-TYPE_GETTERS = (None,
-                grib_get_long,
-                grib_get_double,
-                grib_get_string,
-                grib_get_bytes,
-                )
+TYPE_GETTERS = (
+    None,
+    grib_get_long,
+    grib_get_double,
+    grib_get_string,
+    grib_get_bytes,
+)
 
 
 def grib_get(handle, name):
@@ -432,9 +446,8 @@ fseek.restype = c_int
 
 
 class CFile(object):
-
     def __init__(self, path):
-        self.f = fopen(path, 'rb')
+        self.f = fopen(path, "rb")
         if not self.f:
             raise Exception("Cannot open %s" % (path,))
 
@@ -460,9 +473,8 @@ class CFile(object):
 
 
 class CFile2(object):
-
     def __init__(self, path):
-        self.f = open(path, 'rb')
+        self.f = open(path, "rb")
         if not self.f:
             raise Exception("Cannot open %s" % (path,))
         self.as_FILE = ctypes.pythonapi.PyFile_AsFile
@@ -499,6 +511,7 @@ def grib_get_code(handle, name):
     result = ctypes.c_long(0)
     grib_get_long(handle, name, result)
     return result.value
+
 
 if __name__ == "__main__":
     print(grib_get_gaussian_latitudes(320))

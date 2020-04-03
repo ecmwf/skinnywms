@@ -12,18 +12,17 @@ from skinnywms import errors
 import weakref
 
 __all__ = [
-    'Availability',
-    'CRS',
-    'Layer',
-    'Plotter',
-    'Style',
+    "Availability",
+    "CRS",
+    "Layer",
+    "Plotter",
+    "Style",
 ]
 
 LOG = logging.getLogger(__name__)
 
 
 class CRS:
-
     def __init__(self, name, n_lat, s_lat, w_lon, e_lon):
         self.name = name
         self.n_lat = n_lat
@@ -33,34 +32,33 @@ class CRS:
 
 
 class StyleConfig:
-
     def __init__(self, verb, config):
         self.verb = verb
         self.config = config
 
     def as_dict(self):
-        return dict(_class=self.__class__.__module__ +
-                    '.' + self.__class__.__name__,
-                    verb=self.verb,
-                    config=self.config)
+        return dict(
+            _class=self.__class__.__module__ + "." + self.__class__.__name__,
+            verb=self.verb,
+            config=self.config,
+        )
 
 
 class Style:
-
-    def __init__(self, name, title=None, description=None, legend=None,
-                 config=None):
+    def __init__(self, name, title=None, description=None, legend=None, config=None):
         self.name = name
         self.title = title is not None and title or name
         self.description = description is not None and description or name
         self.config = config
 
     def as_dict(self):
-        return dict(_class=self.__class__.__module__ +
-                    '.' + self.__class__.__name__,
-                    name=self.name,
-                    title=self.title,
-                    description=self.description,
-                    config=[s.as_dict() for s in self.config])
+        return dict(
+            _class=self.__class__.__module__ + "." + self.__class__.__name__,
+            name=self.name,
+            title=self.title,
+            description=self.description,
+            config=[s.as_dict() for s in self.config],
+        )
 
     def adjust_netcdf_plotting(self, params):
         pass
@@ -70,10 +68,9 @@ class Style:
 
 
 class Field:
-
     def style(self, name):
 
-        if name == '':
+        if name == "":
             if self.styles:
                 return self.styles[0]
             else:
@@ -87,7 +84,6 @@ class Field:
 
 
 class Layer:
-
     def __init__(self, name, title, zindex=0, description=None, keywords=[]):
         self.name = name
         self.title = title
@@ -97,7 +93,6 @@ class Layer:
 
 
 class Dimension:
-
     def __init__(self, name, units, default, extent):
         self.name = name
         self.units = units
@@ -106,14 +101,13 @@ class Dimension:
 
 
 class TimeDimension:
-
-    def __init__(self, times, time_unit='hours'):
+    def __init__(self, times, time_unit="hours"):
 
         times = sorted(times)
 
-        self.name = 'time'
-        self.units = 'ISO8601'
-        self.default = times[0].isoformat() + 'Z'
+        self.name = "time"
+        self.units = "ISO8601"
+        self.default = times[0].isoformat() + "Z"
 
         extent = []
         last_step = None
@@ -125,27 +119,27 @@ class TimeDimension:
             step = date1 - date2
             return step.days * 24 + step.seconds / seconds
 
-        if time_unit == 'hours':
+        if time_unit == "hours":
             seconds = 3600
-            unit = 'H'
+            unit = "H"
 
-        if time_unit == 'minutes':
+        if time_unit == "minutes":
             seconds = 60
-            unit = 'M'
+            unit = "M"
 
         for time in times:
-            iso = time.isoformat() + 'Z'
+            iso = time.isoformat() + "Z"
 
             step = step_diff(time, prev, seconds)
             prev = time
             if step == last_step:
-                extent[-1] = '/'.join([last_iso, iso, 'PT%d%s' % (step, unit)])
+                extent[-1] = "/".join([last_iso, iso, "PT%d%s" % (step, unit)])
             else:
                 extent.append(iso)
                 last_step = step
                 last_iso = iso
 
-        self.extent = ','.join(extent)
+        self.extent = ",".join(extent)
 
 
 class DataLayer(Layer):
@@ -162,17 +156,25 @@ class DataLayer(Layer):
         assert self.name == field.name
 
         if self.title != field.title:
-            raise Exception("Title redefined for %s [%s] => [%s]" % (self, self.title, field.title))
+            raise Exception(
+                "Title redefined for %s [%s] => [%s]" % (self, self.title, field.title)
+            )
 
         # Cannot have a mix of None and Dates
         assert field.time is not None
         assert isinstance(field.time, datetime.datetime)
 
         if field.time in self._fields:
-            LOG.info("Duplicate date %s in %s (%s, %s)" % (field.time, self, field, self._fields[field.time]))
+            LOG.info(
+                "Duplicate date %s in %s (%s, %s)"
+                % (field.time, self, field, self._fields[field.time])
+            )
             # return
             # Why are we sometimes throwing this exception .. : need to be checked
-            raise Exception("Duplicate date %s in %s (%s, %s)" % (field.time, self, field, self._fields[field.time]))
+            raise Exception(
+                "Duplicate date %s in %s (%s, %s)"
+                % (field.time, self, field, self._fields[field.time])
+            )
 
         self._fields[field.time] = field
 
@@ -209,12 +211,13 @@ class DataLayer(Layer):
         return field
 
     def as_dict(self):
-        return dict(_class=self.__class__.__module__ + '.' + self.__class__.__name__,
-                    fields=[field.as_dict() for _, field in sorted(self._fields.items())])
+        return dict(
+            _class=self.__class__.__module__ + "." + self.__class__.__name__,
+            fields=[field.as_dict() for _, field in sorted(self._fields.items())],
+        )
 
 
 class Availability:
-
     def __init__(self, auto_add_plotter_layers=True):
         self._context = None
         self._layers = {}
@@ -236,7 +239,7 @@ class Availability:
     def add_field(self, field):
         # TODO: Use config....
         if not self._layers:
-            self._aliases['default'] = field.name
+            self._aliases["default"] = field.name
 
         if field.name in self._layers:
             self._layers[field.name].add_field(field)
@@ -267,13 +270,14 @@ class Availability:
     def as_dict(self):
         if not self._layers:
             self.load()
-        return dict(_class=self.__class__.__module__ + '.' + self.__class__.__name__,
-                    aliases=self._aliases,
-                    layers=[layer.as_dict() for layer in self._layers.values()])
+        return dict(
+            _class=self.__class__.__module__ + "." + self.__class__.__name__,
+            aliases=self._aliases,
+            layers=[layer.as_dict() for layer in self._layers.values()],
+        )
 
 
 class Plotter:
-
     @property
     def context(self):
         return self._context()
@@ -293,27 +297,28 @@ class Plotter:
     def geographic_bounding_box(self):
         raise NotImplementedError
 
-    def plot(self,
-             context,
-             bbox,
-             crs,
-             format,
-             height,
-             layers,
-             styles,
-             version,
-             width,
-             output=None,
-             bgcolor=None,
-             elevation=None,
-             exceptions=None,
-             time=None,
-             transparent=None):
+    def plot(
+        self,
+        context,
+        bbox,
+        crs,
+        format,
+        height,
+        layers,
+        styles,
+        version,
+        width,
+        output=None,
+        bgcolor=None,
+        elevation=None,
+        exceptions=None,
+        time=None,
+        transparent=None,
+    ):
         raise NotImplementedError
 
 
 class Styler:
-
     @property
     def context(self):
         return self._context()
