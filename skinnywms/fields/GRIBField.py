@@ -23,24 +23,27 @@ class GRIBField(datatypes.Field):
 
         self.time = grib.valid_date
 
-        if grib.levtype == 'sfc':
+        if grib.levtype == "sfc":
             self.name = grib.shortName
             self.title = grib.name
         else:
             self.name = "%s_%s" % (grib.shortName, grib.levelist)
             self.title = "%s at %s" % (grib.name, grib.levelist)
 
-        key = 'style.grib.%s' % (self.name, )
+        key = "style.grib.%s" % (self.name,)
 
         # Optimisation
         self.styles = context.stash.get(key)
         if self.styles is None:
-            self.styles = context.stash[key] = context.styler.grib_styles(self, grib, path, index)
+            self.styles = context.stash[key] = context.styler.grib_styles(
+                self, grib, path, index
+            )
 
     def render(self, context, driver, style, legend={}):
         data = []
-        params = dict(grib_input_file_name=self.path,
-                      grib_field_position=self.index + 1)
+        params = dict(
+            grib_input_file_name=self.path, grib_field_position=self.index + 1
+        )
 
         if style:
             style.adjust_grib_plotting(params)
@@ -51,14 +54,16 @@ class GRIBField(datatypes.Field):
         return data
 
     def as_dict(self):
-        return dict(_class=self.__class__.__module__ + '.' + self.__class__.__name__,
-                    name=self.name,
-                    title=self.title,
-                    path=self.path,
-                    index=self.index,
-                    mars=self.mars,
-                    styles=[s.as_dict() for s in self.styles],
-                    time=self.time.isoformat() if self.time is not None else None)
+        return dict(
+            _class=self.__class__.__module__ + "." + self.__class__.__name__,
+            name=self.name,
+            title=self.title,
+            path=self.path,
+            index=self.index,
+            mars=self.mars,
+            styles=[s.as_dict() for s in self.styles],
+            time=self.time.isoformat() if self.time is not None else None,
+        )
 
     def __repr__(self):
         return "GRIBField[%r,%r,%r]" % (self.path, self.index, self.mars)
@@ -75,7 +80,7 @@ class GRIBReader:
         self.context = context
 
     def get_fields(self):
-        self.log.info('Scanning file: %s', self.path)
+        self.log.info("Scanning file: %s", self.path)
 
         fields = []
 
