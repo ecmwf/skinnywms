@@ -1,9 +1,8 @@
-
 import skinnywms
 
 
 def test_version():
 
-	version = skinnywms.__version__
+    version = skinnywms.__version__
 
-	assert ( version )
+    assert version
