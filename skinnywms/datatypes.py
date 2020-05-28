@@ -7,6 +7,7 @@
 # does it submit to any jurisdiction.
 
 import datetime
+from dateutil import parser
 import logging
 from skinnywms import errors
 import weakref
@@ -206,7 +207,7 @@ class DataLayer(Layer):
         if time is None:
             field = self._first
         else:
-            time = datetime.datetime.strptime(time[:19], "%Y-%m-%dT%H:%M:%S")
+            time = parser.parse(time[:19])
             field = self._fields[time]
         return field
 

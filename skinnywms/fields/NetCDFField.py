@@ -12,6 +12,7 @@ import datetime
 import os
 
 from contextlib import closing
+from dateutil import parser
 from itertools import product
 
 import xarray as xr
@@ -23,7 +24,7 @@ def as_datetime(self, time):
     # https://stackoverflow.com/questions/29753060/how-to-convert-numpy-datetime64-into-datetime
 
     # Lose the nano-seconds....
-    return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+    return parser.parse(str(time)[:19])
 
 
 def as_level(self, level):
