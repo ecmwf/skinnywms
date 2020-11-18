@@ -34,6 +34,11 @@ parser.add_argument(
 parser.add_argument(
     "--style", default="", help="Path to a directory where to find the styles"
 )
+
+parser.add_argument(
+    "--user_style", default="", help="Path to a json file containing the style to use"
+)
+
 parser.add_argument("--host", default="127.0.0.1", help="Hostname")
 parser.add_argument("--port", default=5000, help="Port number")
 parser.add_argument(
@@ -51,7 +56,10 @@ args = parser.parse_args()
 if args.style != "":
     os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
-server = WMSServer(Availability(args.path), Plotter(args.baselayer), Styler())
+if args.user_style != "":
+    os.environ["MAGICS_USER_STYLE_PATH"] =  args.user_style
+
+server = WMSServer(Availability(args.path), Plotter(args.baselayer), Styler(args.user_style))
 
 
 server.magics_prefix = args.magics_prefix
