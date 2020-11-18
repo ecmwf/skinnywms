@@ -169,12 +169,12 @@ class DataLayer(Layer):
                 "Duplicate date %s in %s (%s, %s)"
                 % (field.time, self, field, self._fields[field.time])
             )
-            # return
-            # Why are we sometimes throwing this exception .. : need to be checked
-            raise Exception(
-                "Duplicate date %s in %s (%s, %s)"
-                % (field.time, self, field, self._fields[field.time])
-            )
+
+            # # Why are we sometimes throwing this exception .. : need to be checked
+            # raise Exception(
+            #     "Duplicate date %s in %s (%s, %s)"
+            #     % (field.time, self, field, self._fields[field.time])
+            # )
 
         self._fields[field.time] = field
 
