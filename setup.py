@@ -25,7 +25,7 @@ def read(fname):
     return io.open(file_path, encoding="utf-8").read()
 
 
-version = "0.5.4"
+version = "0.6.0"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -42,7 +42,7 @@ setuptools.setup(
     url="https://github.com/sylvielamythepaut/skinnywms",
     packages=setuptools.find_packages(),
     include_package_data=True,
-    install_requires=["magics", "Flask",],
+    install_requires=["ecmwflibs", "Flask",],
     entry_points={"console_scripts": ["skinny-wms=skinnywms.skinny:main"],},
     tests_require=["pytest",],
     test_suite="tests",

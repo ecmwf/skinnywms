@@ -15,7 +15,14 @@ import os
 import numpy as np
 from functools import partial
 
-lib = ctypes.util.find_library("eccodes")
+try:
+    import ecmwflibs
+
+    lib = ecmwflibs.find("eccodes")
+
+except ModuleNotFoundError:
+    lib = ctypes.util.find_library("eccodes")
+
 
 ecmwf_lib = os.path.join(os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.so")
 ecmwf_lib_mac = os.path.join(os.environ.get("ECCODES_LIB_DIR", ""), "libeccodes.dylib")

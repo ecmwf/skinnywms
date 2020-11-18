@@ -239,7 +239,8 @@ GRID_TYPES = {
     "regular_gg": RegularGG(),
     "reduced_ll": ReducedLL(),
     "reduced_gg": ReducedGG(),
-    "rotated_ll": RegularLL,  # For now, we do not  make use of this information .
+    "rotated_ll": RegularLL(),  # For now, we do not  make use of this information .
+    "lambert": RegularLL(),
 }
 
 
@@ -284,7 +285,7 @@ LEVEL_TYPE_CODES = {
     1: SingleLevel(),  # 1 sfc Ground or water surface
     8: SingleLevel(),  # 8 sfc Nominal top of the atmosphere
     100: PressureLevel(),  # 100 pl Isobaric surface (Pa)
-    101: SingleLevel(),  # 101 sfc Mean sea level
+    102: SingleLevel(),  #  Specific altitude above mean sea level (m)
     103: SingleLevel(),  # 103 sfc Specified height level above ground (m)
     106: SingleLevel(),  # 106 sfc Depth below land surface (m)
     111: ModelLevel(),  # 111 ml Eta level

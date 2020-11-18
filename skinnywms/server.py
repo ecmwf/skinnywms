@@ -42,7 +42,9 @@ class TmpFile:
 
     def content(self):
         with open(self.fname, "rb") as f:
-            return f.read()
+            c = f.read()
+            os.close(f)
+        return c
 
     def cleanup(self):
         LOG.debug("Deleting %s" % self.fname)
