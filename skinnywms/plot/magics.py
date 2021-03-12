@@ -195,6 +195,63 @@ class Plotter(datatypes.Plotter):
         except KeyError:
             raise errors.LayerNotDefined("Unknown layer '{}'".format(name))
 
+    def output(self, *, formats, transparent, width, path):
+        return macro.output(
+            output_formats=[formats],
+            output_name_first_page_number="off",
+            output_cairo_transparent_background=transparent,
+            output_width=width,
+            output_name=path,
+        )
+
+    def mmap(self, *, bbox, width, height, crs_name, lon_vertical):
+        min_x, min_y, max_x, max_y = bbox
+        # Magics is talking in cm.
+        width_cm = width / 40.0
+        height_cm = height / 40.0
+
+        coordinates_system = {"EPSG:4326": "latlon"}
+
+        params = {
+            "subpage_map_projection": crs_name,
+            "subpage_lower_left_latitude": min_y,
+            "subpage_lower_left_longitude": min_x,
+            "subpage_upper_right_latitude": max_y,
+            "subpage_upper_right_longitude": max_x,
+            "subpage_coordinates_system": coordinates_system.get(
+                crs_name, "projection"
+            ),
+            "subpage_frame": "off",
+            "page_x_length": width_cm,
+            "page_y_length": height_cm,
+            "super_page_x_length": width_cm,
+            "super_page_y_length": height_cm,
+            "subpage_x_length": width_cm,
+            "subpage_y_length": height_cm,
+            "subpage_x_position": 0.0,
+            "subpage_y_position": 0.0,
+            "output_width": width,
+            "page_frame": "off",
+            "skinny_mode": "on",
+            "page_id_line": "off",
+        }
+
+        # add extra settings for polar stereographic projection when
+        # vertical longitude is not 0
+        if crs_name in ["polar_north", "polar_south"]:
+            params["subpage_map_vertical_longitude"] = lon_vertical
+
+        if crs_name in ["polar_north"]:
+            params["subpage_map_true_scale_north"] = 90
+
+        if crs_name in ["polar_south"]:
+            params["subpage_map_true_scale_south"] = -90
+
+        return macro.mmap(**params)
+
+    def mlayer(self, *, context, layer, style):
+        return layer.render(context, macro, style)
+
     def plot(
         self,
         context,
@@ -240,63 +297,32 @@ class Plotter(datatypes.Plotter):
         path, _ = os.path.splitext(output_fname)
 
         with LOCK:
-            min_x, min_y, max_x, max_y = bbox
-            # Magics is talking in cm.
-            width_cm = width / 40.0
-            height_cm = height / 40.0
+
             macro.silent()
 
-            coordinates_system = {"EPSG:4326": "latlon"}
-
-            map_params = {
-                "subpage_map_projection": crs_name,
-                "subpage_lower_left_latitude": min_y,
-                "subpage_lower_left_longitude": min_x,
-                "subpage_upper_right_latitude": max_y,
-                "subpage_upper_right_longitude": max_x,
-                "subpage_coordinates_system": coordinates_system.get(
-                    crs_name, "projection"
-                ),
-                "subpage_frame": "off",
-                "page_x_length": width_cm,
-                "page_y_length": height_cm,
-                "super_page_x_length": width_cm,
-                "super_page_y_length": height_cm,
-                "subpage_x_length": width_cm,
-                "subpage_y_length": height_cm,
-                "subpage_x_position": 0.0,
-                "subpage_y_position": 0.0,
-                "output_width": width,
-                "page_frame": "off",
-                "skinny_mode": "on",
-                "page_id_line": "off",
-            }
-
-            # add extra settings for polar stereographic projection when
-            # vertical longitude is not 0
-            if crs_name in ["polar_north", "polar_south"]:
-                map_params["subpage_map_vertical_longitude"] = lon_vertical
-
-            if crs_name in ["polar_north"]:
-                map_params["subpage_map_true_scale_north"] = 90
-
-            if crs_name in ["polar_south"]:
-                map_params["subpage_map_true_scale_south"] = -90
-
             args = [
-                macro.output(
-                    output_formats=[magics_format],
-                    output_name_first_page_number="off",
-                    output_cairo_transparent_background=transparent,
-                    output_width=width,
-                    output_name=path,
+                self.output(
+                    formats=magics_format,
+                    transparent=transparent,
+                    width=width,
+                    path=path,
                 ),
-                macro.mmap(**map_params),
+                self.mmap(
+                    bbox=bbox,
+                    width=width,
+                    height=height,
+                    crs_name=crs_name,
+                    lon_vertical=lon_vertical,
+                ),
             ]
 
             for layer, style in zip(layers, styles):
                 style = layer.style(style)
-                args += layer.render(context, macro, style)
+                a = self.mlayer(context=context, layer=layer, style=style)
+                if isinstance(a, list):
+                    args += a
+                else:
+                    args.append(a)
 
             if _macro:
                 return (
@@ -365,7 +391,9 @@ class Plotter(datatypes.Plotter):
                 ),
             ]
 
-            contour = layer.style(style,)
+            contour = layer.style(
+                style,
+            )
 
             args += layer.render(
                 context, macro, contour, {"legend": "on", "contour_legend_only": True}
@@ -446,10 +474,10 @@ class Styler(datatypes.Styler):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self,  user_style=None):
+    def __init__(self, user_style=None):
         self.user_style = None
         if user_style:
-            try: 
+            try:
                 with open(user_style, "r") as f:
                     self.user_style = json.load(f)
                     if "name" not in self.user_style:

@@ -42,9 +42,16 @@ setuptools.setup(
     url="https://github.com/sylvielamythepaut/skinnywms",
     packages=setuptools.find_packages(),
     include_package_data=True,
-    install_requires=["ecmwflibs", "Flask",],
-    entry_points={"console_scripts": ["skinny-wms=skinnywms.skinny:main"],},
-    tests_require=["pytest",],
+    install_requires=[
+        "ecmwflibs",
+        "Flask",
+    ],
+    entry_points={
+        "console_scripts": ["skinny-wms=skinnywms.skinny:main"],
+    },
+    tests_require=[
+        "pytest",
+    ],
     test_suite="tests",
     zip_safe=True,
     keywords="magics grib WMS visualisation NetCDF climate meteorology",
