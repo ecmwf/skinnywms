@@ -60,9 +60,7 @@ class WMSError(Exception):
         super(WMSError, self).__init__(message)
 
     def body(self, version):
-        """Return the response body for this WMS error.
-
-        """
+        """Return the response body for this WMS error."""
         if version == "1.1.1":
             template = _TEMPLATE_1_1_1
         else:
@@ -77,9 +75,7 @@ class WMSError(Exception):
         return template.format(code=code, message=self.message)
 
     def content_type(self, version):
-        """Return the response content type for this WMS error.
-
-        """
+        """Return the response content type for this WMS error."""
         if version == "1.1.1":
             return "application/vnd.ogc.se_xml"
         else:
@@ -180,9 +176,7 @@ class OperationNotSupported(WMSError):
 
 class ServiceNotDefined(WMSError):
 
-    """The requested service is not available in this service instance.
-
-    """
+    """The requested service is not available in this service instance."""
 
 
 class StyleNotDefined(WMSError):
@@ -194,9 +188,7 @@ class StyleNotDefined(WMSError):
 
 
 def wrap(exc):
-    """Ensure an error is an instance of `WMSError`.
-
-    """
+    """Ensure an error is an instance of `WMSError`."""
     if isinstance(exc, WMSError):
         return exc
 

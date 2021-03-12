@@ -2,5 +2,7 @@
 build/
 dist/
 __pycache__/
-skinnywms.egg-info/
+*.egg-info/
 meta.xml
+*.pyc
+*&*

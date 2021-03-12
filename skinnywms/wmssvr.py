@@ -57,9 +57,11 @@ if args.style != "":
     os.environ["MAGICS_STYLE_PATH"] = args.style + ":ecmwf"
 
 if args.user_style != "":
-    os.environ["MAGICS_USER_STYLE_PATH"] =  args.user_style
+    os.environ["MAGICS_USER_STYLE_PATH"] = args.user_style
 
-server = WMSServer(Availability(args.path), Plotter(args.baselayer), Styler(args.user_style))
+server = WMSServer(
+    Availability(args.path), Plotter(args.baselayer), Styler(args.user_style)
+)
 
 
 server.magics_prefix = args.magics_prefix
