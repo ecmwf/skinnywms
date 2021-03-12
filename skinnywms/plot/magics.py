@@ -28,9 +28,6 @@ mimetypes.add_type("application/x-netcdf", ".nc", strict=False)
 mimetypes.add_type("application/x-netcdf", ".nc4", strict=False)
 
 
-_CRSS = {crs["name"]: datatypes.CRS(**crs) for crs in macro.wmscrs()["crss"]}
-
-
 MAGICS_OUTPUT_TYPES = {
     "image/png": "png",
 }
@@ -154,16 +151,19 @@ class MagicsWebStyle(datatypes.Style):
 
 class Plotter(datatypes.Plotter):
 
-    supported_crss = tuple(_CRSS.values())
-
-    geographic_bounding_box = macro.wmscrs()["geographic_bounding_box"]
-
     log = logging.getLogger(__name__)
 
-    def __init__(self, baselayer=None, styles=None):
+    def __init__(self, baselayer=None, styles=None, driver=macro):
+        self.driver = driver
+
+        self.wmscrs = driver.wmscrs()
+
+        self._CRSS = {crs["name"]: datatypes.CRS(**crs) for crs in self.wmscrs["crss"]}
+
         if styles is None:
             styles = {}
         self._styles = styles
+
         layers = [
             StaticLayer("foreground", title="Foreground", zindex=99999),
             StaticLayer("background", title="Background", zindex=-99999),
@@ -177,13 +177,21 @@ class Plotter(datatypes.Plotter):
             name = os.path.basename(baselayer)
             try:
                 name = os.path.basename(baselayer)
-            except:
+            except Exception:
                 name = "User defined base layer"
             base = UserBaseLayer(name, title=name, zindex=99999)
             base.layer = baselayer
             layers.append(base)
 
         self._layers = {layer.name: layer for layer in layers}
+
+    @property
+    def supported_crss(self):
+        return tuple(self._CRSS.values())
+
+    @property
+    def geographic_bounding_box(self):
+        return self.wmscrs["geographic_bounding_box"]
 
     def layers(self):
         for layer in self._layers.values():
@@ -197,7 +205,7 @@ class Plotter(datatypes.Plotter):
 
     def output(self, formats, transparent, width, path):
 
-        return macro.output(
+        return self.driver.output(
             output_formats=[formats],
             output_name_first_page_number="off",
             output_cairo_transparent_background=transparent,
@@ -248,13 +256,13 @@ class Plotter(datatypes.Plotter):
         if crs_name in ["polar_south"]:
             params["subpage_map_true_scale_south"] = -90
 
-        return macro.mmap(**params)
+        return self.driver.mmap(**params)
 
     def mlayers(self, context, layers, styles):
         result = []
         for layer, style in zip(layers, styles):
             style = layer.style(style)
-            result += layer.render(context, macro, style)
+            result += layer.render(context, self.driver, style)
         return result
 
     def plot(
@@ -288,7 +296,7 @@ class Plotter(datatypes.Plotter):
             crs_name = "EPSG:32761"
         else:
             try:
-                crs = _CRSS[crs]
+                crs = self._CRSS[crs]
                 crs_name = crs.name
             except KeyError:
                 raise ValueError("Unsupported CRS '{}'".format(crs))
@@ -303,7 +311,7 @@ class Plotter(datatypes.Plotter):
 
         with LOCK:
 
-            macro.silent()
+            self.driver.silent()
 
             args = [
                 self.output(
@@ -335,9 +343,9 @@ class Plotter(datatypes.Plotter):
                     ),
                 )
 
-            # self.log.debug('plot(): Calling macro.plot(%s)', args)
+            # self.log.debug('plot(): Calling self.driver.plot(%s)', args)
             try:
-                macro.plot(*args)
+                self.driver.plot(*args)
             except Exception as e:
                 self.log.exception("Magics error: %s", e)
                 raise
@@ -367,14 +375,14 @@ class Plotter(datatypes.Plotter):
             height_cm = float(height) / 40.0
 
             args = [
-                macro.output(
+                self.driver.output(
                     output_formats=[magics_format],
                     output_name_first_page_number="off",
                     output_cairo_transparent_background=transparent,
                     output_width=width,
                     output_name=path,
                 ),
-                macro.mmap(
+                self.driver.mmap(
                     subpage_frame="off",
                     page_x_length=width_cm,
                     page_y_length=height_cm,
@@ -395,7 +403,10 @@ class Plotter(datatypes.Plotter):
             )
 
             args += layer.render(
-                context, macro, contour, {"legend": "on", "contour_legend_only": True}
+                context,
+                self.driver,
+                contour,
+                {"legend": "on", "contour_legend_only": True},
             )
 
             legend_font_size = "25%"
@@ -406,7 +417,7 @@ class Plotter(datatypes.Plotter):
             if hasattr(layer, legend_title):
                 legend_title = layer.legend_title
 
-            legend = macro.mlegend(
+            legend = self.driver.mlegend(
                 legend_title="on",
                 legend_title_text=legend_title,
                 legend_display_type="continuous",
@@ -421,9 +432,9 @@ class Plotter(datatypes.Plotter):
                 legend_text_colour="white",
             )
 
-            # self.log.debug('plot(): Calling macro.plot(%s)', args)
+            # self.log.debug('plot(): Calling self.driver.plot(%s)', args)
             try:
-                macro.plot(*args, legend)
+                self.driver.plot(*args, legend)
             except Exception as e:
                 self.log.exception("Magics error: %s", e)
                 raise
@@ -458,7 +469,7 @@ class Plotter(datatypes.Plotter):
             text.append("")
 
             text.append("a = %s" % (pprint.pformat(params),))
-            text.append("args.append(macro.%s(**a))" % (a.verb,))
+            text.append("args.append(self.driver.%s(**a))" % (a.verb,))
 
         if path and data_url:
             text.append('download("%s", "%s")' % (data_url, path))
@@ -489,8 +500,10 @@ class Styler(datatypes.Styler):
             return [MagicsWebStyle(self.user_style["name"])]
         with LOCK:
             try:
-                styles = macro.wmsstyles(
-                    macro.mnetcdf(netcdf_filename=path, netcdf_value_variable=variable)
+                styles = self.driver.wmsstyles(
+                    self.driver.mnetcdf(
+                        netcdf_filename=path, netcdf_value_variable=variable
+                    )
                 )
                 # Looks like they are provided in reverse order
 
@@ -507,8 +520,8 @@ class Styler(datatypes.Styler):
 
         with LOCK:
             try:
-                styles = macro.wmsstyles(
-                    macro.mgrib(
+                styles = self.driver.wmsstyles(
+                    self.driver.mgrib(
                         grib_input_file_name=path, grib_field_position=index + 1
                     )
                 )
