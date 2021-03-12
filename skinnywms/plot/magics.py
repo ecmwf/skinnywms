@@ -178,7 +178,7 @@ class Plotter(datatypes.Plotter):
             try:
                 name = os.path.basename(baselayer)
             except:
-                name = "user defined baselayer"
+                name = "User defined base layer"
             base = UserBaseLayer(name, title=name, zindex=99999)
             base.layer = baselayer
             layers.append(base)
@@ -195,7 +195,8 @@ class Plotter(datatypes.Plotter):
         except KeyError:
             raise errors.LayerNotDefined("Unknown layer '{}'".format(name))
 
-    def output(self, *, formats, transparent, width, path):
+    def output(self, formats, transparent, width, path):
+
         return macro.output(
             output_formats=[formats],
             output_name_first_page_number="off",
@@ -204,7 +205,7 @@ class Plotter(datatypes.Plotter):
             output_name=path,
         )
 
-    def mmap(self, *, bbox, width, height, crs_name, lon_vertical):
+    def mmap(self, bbox, width, height, crs_name, lon_vertical):
         min_x, min_y, max_x, max_y = bbox
         # Magics is talking in cm.
         width_cm = width / 40.0
@@ -249,8 +250,12 @@ class Plotter(datatypes.Plotter):
 
         return macro.mmap(**params)
 
-    def mlayer(self, *, context, layer, style):
-        return layer.render(context, macro, style)
+    def mlayers(self, context, layers, styles):
+        result = []
+        for layer, style in zip(layers, styles):
+            style = layer.style(style)
+            result += layer.render(context, macro, style)
+        return result
 
     def plot(
         self,
@@ -316,13 +321,7 @@ class Plotter(datatypes.Plotter):
                 ),
             ]
 
-            for layer, style in zip(layers, styles):
-                style = layer.style(style)
-                a = self.mlayer(context=context, layer=layer, style=style)
-                if isinstance(a, list):
-                    args += a
-                else:
-                    args.append(a)
+            args += self.mlayers(context, layers, styles)
 
             if _macro:
                 return (
