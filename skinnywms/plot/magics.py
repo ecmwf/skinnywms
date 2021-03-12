@@ -170,7 +170,7 @@ class Plotter(datatypes.Plotter):
             StaticLayer("grid", title="Grid", zindex=99999),
             StaticLayer("boundaries", title="Boundaries", zindex=99999),
             OceanLayer("oceans", title="Oceans", zindex=99999),
-            USLayer("us-states", title="Us States", zindex=99999),
+            USLayer("us-states", title="US States", zindex=99999),
         ]
 
         if baselayer:
