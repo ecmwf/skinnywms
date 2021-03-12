@@ -25,7 +25,12 @@ def read(fname):
     return io.open(file_path, encoding="utf-8").read()
 
 
-version = "0.7.0"
+version = None
+for line in read("skinnywms/__init__.py").split("\n"):
+    if line.startswith("__version__"):
+        version = line.split("=")[-1].strip()[1:-1]
+
+assert version
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
