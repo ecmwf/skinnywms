@@ -526,7 +526,6 @@ class Styler(datatypes.Styler):
                         grib_input_file_name=path, grib_field_position=index + 1
                     )
                 )
-                print (styles)
                 # Looks like they are provided in reverse order
             except Exception as e:
                 self.log.exception("grib_styles: Error: %s", e)
