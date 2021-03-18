@@ -484,8 +484,9 @@ class Styler(datatypes.Styler):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, user_style=None):
+    def __init__(self, user_style=None, driver=macro):
         self.user_style = None
+        self.driver = driver
         if user_style:
             try:
                 with open(user_style, "r") as f:
@@ -525,6 +526,7 @@ class Styler(datatypes.Styler):
                         grib_input_file_name=path, grib_field_position=index + 1
                     )
                 )
+                print (styles)
                 # Looks like they are provided in reverse order
             except Exception as e:
                 self.log.exception("grib_styles: Error: %s", e)
