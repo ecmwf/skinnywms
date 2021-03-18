@@ -114,6 +114,7 @@ Lead developers:
 
 - `Sylvie Lamy-Thepaut <https://github.com/sylvielamythepaut>`_ - ECMWF
 - `Baudouin Raoult <https://github.com/b8raoult>` - ECMWF
+- `Eduard Rosert <https://github.com/eduardRosert>` - ECMWF
 
 Main contributors:
 
