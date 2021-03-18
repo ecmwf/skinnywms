@@ -7,7 +7,7 @@ RUN set -eux \
     && mkdir -p /app/
 
 COPY . /app/skinnywms
-RUN pip install /app/skinnywms
+RUN pip install /app/skinnywms --no-dependencies
 
 # Install Python run-time dependencies.
 COPY requirements.txt /root/
