@@ -35,22 +35,24 @@ class Availability(datatypes.Availability):
                 return
 
             if os.path.isdir(self._path):
-
-                for fname in sorted(os.listdir(self._path)):
-                    fname = os.path.join(self._path, fname)
-                    if not os.path.isfile(fname):
-                        continue
-
-                    self.add_file(fname)
-
+                self.add_directory(self._path)
             elif os.path.isfile(self._path):
                 self.add_file(self._path)
             else:
                 raise NotImplementedError(
                     "%s is neither a file not  a directory" % (self._path,)
                 )
-
             self._loaded = True
+
+    def add_directory(self, path):
+        for fname in sorted(os.listdir(path)):
+            fname = os.path.join(path, fname)
+            if os.path.isdir(fname):
+                self.add_directory(fname)
+            if not os.path.isfile(fname):
+                continue
+
+            self.add_file(fname)
 
     def add_file(self, path):
         self.log.info("Scanning %s", path)
