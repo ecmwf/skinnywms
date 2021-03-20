@@ -546,3 +546,15 @@ class Styler(datatypes.Styler):
             contour_automatic_setting="style_name",
             contour_style_name=style.name,
         )
+    def winds(self, field, driver, style, legend={}):
+
+        if self.user_style:
+            return driver.mwind(self.user_style)
+
+        return driver.mwind(wind_thinning_method = "automatic", wind_thinning_factor = 5)
+        # TODO : add automatic styling for winds 
+        # return driver.mwinds(
+        #     legend,
+        #     contour_automatic_setting="style_name",
+        #     contour_style_name=style.name,
+        # )

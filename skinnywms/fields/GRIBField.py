@@ -11,6 +11,14 @@ import logging
 from skinnywms import grib_bindings
 
 
+companions = { "10u" : "10v" , "10v" : "10u" }
+
+ucomponents = ["10u"]
+vcomponents = ["10v"]
+
+possible_matches = {}
+
+
 class GRIBField(datatypes.Field):
 
     log = logging.getLogger(__name__)
@@ -20,8 +28,11 @@ class GRIBField(datatypes.Field):
         self.path = path
         self.index = index
         self.mars = grib.mars_request
+        self.render = self.render_contour
 
         self.time = grib.valid_date
+        self.levtype = grib.levtype
+        self.shortName = grib.shortName
 
         if grib.levtype == "sfc":
             self.name = grib.shortName
@@ -29,7 +40,23 @@ class GRIBField(datatypes.Field):
         else:
             self.name = "%s_%s" % (grib.shortName, grib.levelist)
             self.title = "%s at %s" % (grib.name, grib.levelist)
+            self.levelist = grib.levelist
 
+        if self.shortName in companions:
+            companion = companions[self.shortName]
+            matches = possible_matches.get(companion, [])
+            
+            found = False
+            for match in matches:
+                found = self.match(match)
+                if found :
+                    break; 
+            if not found:
+                if self.name not in possible_matches: 
+                    possible_matches[self.name] = [self]
+                else:
+                    possible_matches[self.name].append(self)
+    
         key = "style.grib.%s" % (self.name,)
 
         # Optimisation
@@ -39,7 +66,46 @@ class GRIBField(datatypes.Field):
                 self, grib, path, index
             )
 
-    def render(self, context, driver, style, legend={}):
+    def match(self, companion):
+        if self.time != companion.time: 
+            return False
+        if self.levtype != companion.levtype: 
+            return False
+        if self.levtype != "sfc":
+            if self.levelist != companion.levelist: 
+                return False
+        #  Found a match WE have a vector
+        self.render = self.render_wind
+        if self.name in ucomponents:
+            self.ucomponent = self.index
+            self.vcomponent = companion.index
+            companion.ucomponent = self.index
+            companion.vcomponent = companion.index
+            if self.levtype == "sfc":
+                self.name = "_".format(self.shortName, companion.shortName)
+                self.title = "/".format(self.name, companion.name)
+            else:
+                self.name = "{}_{}_%s" % (self.shortName, companion.shortName, self.levelist)
+                self.title = "{}/{} at %s" % (self.shortName, companion.shortName, self.levelist)
+            
+        else:
+            self.vcomponent = self.index
+            self.ucomponent = companion.index
+            companion.vcomponent = self.index
+            companion.ucomponent = companion.index
+            if self.levtype == "sfc":
+                self.name = "{}/{}".format(companion.shortName, self.shortName)
+                self.title = "{}/{}".format(companion.shortName, self.shortName)
+            else:
+                self.name = "{}_{}_{}".format(companion.shortName, self.shortName, self.levelist)
+                self.title = "{}/{} at {}".format(companion.shortName, self.shortName, self.levelist)
+        
+        
+        return True
+        
+
+
+    def render_contour(self, context, driver, style, legend={}):
         data = []
         params = dict(
             grib_input_file_name=self.path, grib_field_position=self.index + 1
@@ -50,6 +116,23 @@ class GRIBField(datatypes.Field):
 
         data.append(driver.mgrib(**params))
         data.append(context.styler.contours(self, driver, style, legend))
+
+        return data
+    
+    def render_wind(self, context, driver, style, legend={}):
+        data = []
+        
+        params = dict(
+            grib_input_file_name = self.path, 
+            grib_wind_position_1 = self.ucomponent+1, 
+            grib_wind_position_2 = self.vcomponent+1
+        )
+
+        if style:
+            style.adjust_grib_plotting(params)
+
+        data.append(driver.mgrib(**params))
+        data.append(context.styler.winds(self, driver, style, legend))
 
         return data
 
