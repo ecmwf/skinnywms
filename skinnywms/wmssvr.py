@@ -20,7 +20,8 @@ application = Flask(__name__)
 
 demo = os.path.join(os.path.dirname(__file__), "testdata", "sfc.grib")
 
-demo = os.environ.get("SKINNYWMS_DATA_PATH", demo)
+if os.environ.get("SKINNYWMS_DATA_PATH", "") != "":
+    demo = os.environ.get("SKINNYWMS_DATA_PATH")
 
 parser = argparse.ArgumentParser(description="Simple WMS server")
 
