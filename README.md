@@ -36,13 +36,40 @@ skinny-wms --path /path/to/mydata
 ```bash
 uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
 ```
+
+
 Run using Docker
 ----------------
 
+By default the docker image will start the application using uwsgi and will load and display some demo data.
+
+* Run the demo:
 ```bash
- docker run --rm -p 5000:5000 -i -t ecmwf/skinnywms 
- ```
- Now you can try the leaflet demo at http://localhost:5000/
+docker run --rm -p 5000:5000 -it ecmwf/skinnywms 
+```
+Now you can try the leaflet demo at http://localhost:5000/
+
+* Run using data on your machine:
+```bash
+docker run --rm -p 5000:5000 -it \
+    --volume=/path/to/my/data:/path/inside/the/container \
+    --env SKINNYWMS_DATA_PATH=/path/inside/the/container \
+      ecmwf/skinnywms
+```
+Now you can access the leaflet demo with your data at http://localhost:5000/
+
+* Configure different options by setting environment variables accordingly:
+```bash
+docker run --rm -p 5000:5000 -it \
+    --volume=/path/to/my/data:/path/inside/the/container \
+    --env SKINNYWMS_DATA_PATH=/path/inside/the/container \
+    --env SKINNYWMS_HOST=0.0.0.0 \
+    --env SKINNYWMS_PORT=5000 \
+    --env SKINNYWMS_MOUNT=/mymodel/ \
+    --env SKINNYWMS_UWSGI_WORKERS=4 \
+      ecmwf/skinnywms
+```
+Now you can access the ```GetCapabilities`` document for your data at http://localhost:5000/mymodel/wms?request=GetCapabilities
 
 
 Installation
