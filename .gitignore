@@ -6,3 +6,5 @@ __pycache__/
 meta.xml
 *.pyc
 *&*
+venv/
+.venv/
