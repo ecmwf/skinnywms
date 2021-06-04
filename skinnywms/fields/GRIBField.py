@@ -11,13 +11,19 @@ import logging
 from skinnywms import grib_bindings
 
 
-companions = { "10u" : "10v" , "10v" : "10u" }
+wind_companions = { "10u" : "10v", "u" : "v", "U_10m" : "V_10m", "U" : "V" }
+"""A collection of wind u-component/v-component (key/value) grib shortName pairs that may be paired for better visualisation as wind barbs."""
+wind_ucomponents = set(wind_companions.keys())
+"""A collection grib shortNames that represend wind u-components"""
+wind_vcomponents = set(wind_companions.values())
 
-ucomponents = ["10u"]
-vcomponents = ["10v"]
+# add the inverse combination as well to make matching independent of the order in which fields are processed
+for key,value in list(wind_companions.items()):
+    wind_companions[value] = key
 
 possible_matches = {}
-
+"""a collection of imported fields that could have companions
+which is filled during init process"""
 
 class GRIBField(datatypes.Field):
 
@@ -33,6 +39,7 @@ class GRIBField(datatypes.Field):
         self.time = grib.valid_date
         self.levtype = grib.levtype
         self.shortName = grib.shortName
+        self.companion = None
 
         if grib.levtype == "sfc":
             self.name = grib.shortName
@@ -42,19 +49,30 @@ class GRIBField(datatypes.Field):
             self.title = "%s at %s" % (grib.name, grib.levelist)
             self.levelist = grib.levelist
 
-        if self.shortName in companions:
-            companion = companions[self.shortName]
-            matches = possible_matches.get(companion, [])
+        # check if this field could have a companion field (e.g. wind components)
+        if self.shortName in wind_companions:
+            companion_name = wind_companions[self.shortName]
+            # get the possible companions that have already been found
+            # but haven't been matched up with other fields
+            possible_companions = possible_matches.get(companion_name, []) 
             
-            found = False
-            for match in matches:
-                found = self.match(match)
-                if found :
-                    break; 
-            if not found:
+            for possible_companion in possible_companions:
+                # check if this companion matches
+                found = self.matches(possible_companion)
+                if found:
+                    self.companion = possible_companion
+                    break
+
+            if self.companion is None:
+                # if we didn't manage to match up this field with another one
+                # we'll keep it for later
                 if self.name not in possible_matches: 
                     possible_matches[self.name] = [self]
                 else:
+                    # there could be multiple fields with same name (shortName)
+                    # but different time or level properties
+                    # for matching, so remember them all
+                    # as possible candidates for matching
                     possible_matches[self.name].append(self)
     
         key = "style.grib.%s" % (self.name,)
@@ -66,7 +84,14 @@ class GRIBField(datatypes.Field):
                 self, grib, path, index
             )
 
-    def match(self, companion):
+    def matches(self, companion):
+        """Check if companion has matching grib properties time, levtype and levelist.
+
+        :param companion: a grib field that can be used in combination to visualise self
+        :type companion: GRIBField
+        :return: True if companion matches the properties of self, else False
+        :rtype: bool
+        """
         if self.time != companion.time: 
             return False
         if self.levtype != companion.levtype: 
@@ -76,7 +101,7 @@ class GRIBField(datatypes.Field):
                 return False
         #  Found a match WE have a vector
         self.render = self.render_wind
-        if self.name in ucomponents:
+        if self.name in wind_ucomponents:
             self.ucomponent = self.index
             self.vcomponent = companion.index
             companion.ucomponent = self.index
@@ -151,6 +176,15 @@ class GRIBField(datatypes.Field):
     def __repr__(self):
         return "GRIBField[%r,%r,%r]" % (self.path, self.index, self.mars)
 
+    def __eq__(self, other):
+        if isinstance(other, GRIBField):
+            return self.__hash__() == other.__hash__()
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
 
 class GRIBReader:
 
@@ -165,12 +199,18 @@ class GRIBReader:
     def get_fields(self):
         self.log.info("Scanning file: %s", self.path)
 
-        fields = []
+        fields = set()
 
         for i, m in enumerate(grib_bindings.GribFile(self.path)):
-            fields.append(GRIBField(self.context, self.path, m, i))
+            fields.add(GRIBField(self.context, self.path, m, i))
+        
+        # remove fields that were successfully matched 
+        # and will be diplayed together with their companion
+        companionfields = {item.companion for item in fields if not item.companion is None}
+        for gribfield in companionfields:
+            fields.remove(gribfield)
 
         if not fields:
             raise Exception("GRIBReader no 2D fields found in %s", self.path)
 
-        return fields
+        return list(fields)
