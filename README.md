@@ -122,6 +122,14 @@ Magics is available on github https://github.com/ecmwf/magics
 Note that *Magics* support for the Windows operating system is experimental.
 
 
+Start up a local development environment (Docker)
+-----------------------------------------
+
+Make sure you have ``Docker`` and ``docker-compose`` installed. Then run:
+```bash
+docker-compose up
+```
+This will build a dev image and start up a local flask development server (with automatic reload on code changes) at http://localhost:5000 based on the configuration stored in [docker-compose.yml](./docker-compose.yml) and [.env](./.env) and by default try to load all GRIB and NetCDF data stored in [skinnywms/testdata](./skinnywms/testdata).
 
 
 Contributing
