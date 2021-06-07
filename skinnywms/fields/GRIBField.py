@@ -208,7 +208,8 @@ class GRIBReader:
         # and will be diplayed together with their companion
         companionfields = {item.companion for item in fields if not item.companion is None}
         for gribfield in companionfields:
-            fields.remove(gribfield)
+            if gribfield in fields:
+                fields.remove(gribfield)
 
         if not fields:
             raise Exception("GRIBReader no 2D fields found in %s", self.path)
