@@ -289,6 +289,7 @@ LEVEL_TYPE_CODES = {
     103: SingleLevel(),  # 103 sfc Specified height level above ground (m)
     106: SingleLevel(),  # 106 sfc Depth below land surface (m)
     111: ModelLevel(),  # 111 ml Eta level
+    150: ModelLevel(),  # 150 dwd model level
 }
 
 LEVEL_TYPES = {"pl": PressureLevel(), "sfc": SingleLevel(), "ml": ModelLevel()}
