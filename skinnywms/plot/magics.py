@@ -243,6 +243,7 @@ class Plotter(datatypes.Plotter):
             "page_frame": "off",
             "skinny_mode": "on",
             "page_id_line": "off",
+            "subpage_gutter_percentage": 20., 
         }
 
         # add extra settings for polar stereographic projection when
@@ -392,6 +393,7 @@ class Plotter(datatypes.Plotter):
                     subpage_y_length=height_cm,
                     subpage_x_position=0.0,
                     subpage_y_position=0.0,
+                    subpage_gutter_percentage = 20., 
                     output_width=width,
                     page_frame="off",
                     page_id_line="off",
@@ -551,7 +553,22 @@ class Styler(datatypes.Styler):
         if self.user_style:
             return driver.mwind(self.user_style)
 
-        return driver.mwind(wind_thinning_method = "automatic", wind_thinning_factor = 5)
+        return driver.mwind(wind_thinning_method = "automatic", 
+            wind_field_type = "flags",
+            wind_advanced_method = "on",
+            wind_advanced_colour_max_value = 25.00,
+            wind_advanced_colour_min_value = 0.00,
+            wind_advanced_colour_table_colour_method = "calculate",
+            wind_advanced_colour_max_level_colour = "red",
+            wind_advanced_colour_min_level_colour = "blue",
+            wind_advanced_colour_direction = "clockwise",
+            wind_arrow_unit_velocity = 10., 
+            contour_shade_colour_direction = "clockwise",
+            wind_flag_calm_indicator_size = 0.10,
+            wind_flag_length = 0.50,
+            wind_flag_origin_marker_size = 0.1,
+            wind_flag_origin_marker = "dot",
+            wind_thinning_factor = 5)
         # TODO : add automatic styling for winds 
         # return driver.mwinds(
         #     legend,
