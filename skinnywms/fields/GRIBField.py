@@ -37,17 +37,15 @@ class GRIBField(datatypes.Field):
         self.render = self.render_contour
 
         self.time = grib.valid_date
-        self.levtype = grib.levtype
-        self.shortName = grib.shortName
-        self.companion = None
 
-        if grib.levtype == "sfc":
-            self.name = grib.shortName
-            self.title = grib.name
-        else:
-            self.name = "%s_%s" % (grib.shortName, grib.levelist)
-            self.title = "%s at %s" % (grib.name, grib.levelist)
-            self.levelist = grib.levelist
+        self.levtype = grib.levtype
+        if self.levtype == "150": self.levtype = "ml" # DWD ICON hack
+
+        self.shortName = grib.shortName
+        self.longName = grib.name
+        self.levelist = grib.levelist if hasattr(grib,"levelist") and grib.levtype != "sfc" else None # None = 2d field
+
+        self.companion = None
 
         # check if this field could have a companion field (e.g. wind components)
         if self.shortName in wind_companions:
@@ -60,23 +58,25 @@ class GRIBField(datatypes.Field):
                 # check if this companion matches
                 found = self.matches(possible_companion)
                 if found:
-                    self.companion = possible_companion
+                    self.update_companion(companion=possible_companion)
                     break
 
             if self.companion is None:
                 # if we didn't manage to match up this field with another one
                 # we'll keep it for later
-                if self.name not in possible_matches: 
-                    possible_matches[self.name] = [self]
+                if self.shortName not in possible_matches: 
+                    possible_matches[self.shortName] = [self]
                 else:
                     # there could be multiple fields with same name (shortName)
                     # but different time or level properties
                     # for matching, so remember them all
                     # as possible candidates for matching
-                    possible_matches[self.name].append(self)
-    
-        key = "style.grib.%s" % (self.name,)
+                    possible_matches[self.shortName].append(self)
 
+        self.update_layer_name_title() # update layer name and title
+
+        key = "style.grib.%s" % (self.name,)
+        
         # Optimisation
         self.styles = context.stash.get(key)
         if self.styles is None:
@@ -84,7 +84,7 @@ class GRIBField(datatypes.Field):
                 self, grib, path, index
             )
 
-    def matches(self, companion):
+    def matches(self, other):
         """Check if companion has matching grib properties time, levtype and levelist.
 
         :param companion: a grib field that can be used in combination to visualise self
@@ -92,43 +92,50 @@ class GRIBField(datatypes.Field):
         :return: True if companion matches the properties of self, else False
         :rtype: bool
         """
-        if self.time != companion.time: 
+        if self.time != other.time:
             return False
-        if self.levtype != companion.levtype: 
+        if self.levtype != other.levtype:
             return False
-        if self.levtype != "sfc":
-            if self.levelist != companion.levelist: 
-                return False
-        #  Found a match WE have a vector
-        self.render = self.render_wind
-        if self.name in wind_ucomponents:
-            self.ucomponent = self.index
-            self.vcomponent = companion.index
-            companion.ucomponent = self.index
-            companion.vcomponent = companion.index
-            if self.levtype == "sfc":
-                self.name = "_".format(self.shortName, companion.shortName)
-                self.title = "/".format(self.name, companion.name)
-            else:
-                self.name = "{}_{}_%s" % (self.shortName, companion.shortName, self.levelist)
-                self.title = "{}/{} at %s" % (self.shortName, companion.shortName, self.levelist)
-            
-        else:
-            self.vcomponent = self.index
-            self.ucomponent = companion.index
-            companion.vcomponent = self.index
-            companion.ucomponent = companion.index
-            if self.levtype == "sfc":
-                self.name = "{}/{}".format(companion.shortName, self.shortName)
-                self.title = "{}/{}".format(companion.shortName, self.shortName)
-            else:
-                self.name = "{}_{}_{}".format(companion.shortName, self.shortName, self.levelist)
-                self.title = "{}/{} at {}".format(companion.shortName, self.shortName, self.levelist)
-        
-        
+        if self.levelist != other.levelist: 
+            return False
         return True
-        
+    
+    def update_companion(self, companion):
+        """Updates self.companion with the given companion. Updates render function and ucomponent and vcomponent attributes.
 
+        :param companion: the new companion field
+        :type companion: GRIBField
+        """
+        # found a match (right now it's always wind components)
+        self.companion = companion
+        companion.companion = self
+
+        # remember wind components u,v
+        self.ucomponent = self if self.shortName in wind_ucomponents else companion
+        self.vcomponent = companion if self.shortName in wind_ucomponents else self
+
+        companion.ucomponent = self.ucomponent
+        companion.vcomponent = self.vcomponent
+
+        # render these fields as wind
+        self.render = self.render_wind
+        companion.render = companion.render_wind
+
+    def update_layer_name_title(self):
+        """Updates name and title of the current layer.
+        """
+
+        nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+        titleSuffix = "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+
+        if self.companion is None:
+            self.name = "%s%s" % (self.shortName, nameSuffix)
+            self.title = "%s%s" % (self.longName, titleSuffix)
+        else:
+            self.name = "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+            self.title = "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+            self.companion.name = self.name
+            self.companion.title = self.title
 
     def render_contour(self, context, driver, style, legend={}):
         data = []
@@ -149,8 +156,8 @@ class GRIBField(datatypes.Field):
         
         params = dict(
             grib_input_file_name = self.path, 
-            grib_wind_position_1 = self.ucomponent+1, 
-            grib_wind_position_2 = self.vcomponent+1
+            grib_wind_position_1 = self.ucomponent.index+1, 
+            grib_wind_position_2 = self.vcomponent.index+1
         )
 
         if style:
@@ -206,6 +213,7 @@ class GRIBReader:
         
         # remove fields that were successfully matched 
         # and will be diplayed together with their companion
+        # (this does cleanup companion fields across multiple grib files)
         companionfields = {item.companion for item in fields if not item.companion is None}
         for gribfield in companionfields:
             if gribfield in fields:
