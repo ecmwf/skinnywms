@@ -249,8 +249,10 @@ class Availability:
     def layers(self):
         if not self._layers:
             self.load()
-        # TODO: Sort
-        return [l for l in self._layers.values()]
+        # return a sorted list
+        ret = [l for l in self._layers.values()]
+        ret.sort(key=lambda x: x.name, reverse = False)
+        return ret
 
     def layer(self, name, dims):
         if not self._layers:
