@@ -8,3 +8,4 @@ meta.xml
 *&*
 venv/
 .venv/
+skinnywms/testdata/*/*
