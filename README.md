@@ -94,6 +94,11 @@ Limitations:
 ------------
 - SkinnyWMS will perform better on well formatted and documented NetCDF and GRIB.
 
+- grib fields containing corresponding wind components u,v need to be placed together in a single grib file in order to be displayed as vectors/wind barbs in SkinnyWMS. You can combine multiple grib files into a single file using ecCodes ``grib_copy`` (included in the docker image), e.g.:
+```bash
+grib_copy input_wind_u_component.grb2 input_wind_v_component.grib2 output_wind_u_v_combined.grb2
+```
+
 - development stage: **Alpha**,
 
 
