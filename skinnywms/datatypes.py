@@ -1,3 +1,5 @@
+from __future__ import annotations
+from abc import ABC, abstractmethod # see https://www.python.org/dev/peps/pep-0563/
 # (C) Copyright 2012-2019 ECMWF.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
@@ -8,6 +10,7 @@
 
 import datetime
 import logging
+from skinnywms.server import WMSServer
 from skinnywms import errors
 import weakref
 
@@ -68,7 +71,7 @@ class Style:
 
 
 class Field:
-    def style(self, name):
+    def style(self, name:str) -> str:
 
         if name == "":
             if self.styles:
@@ -82,6 +85,61 @@ class Field:
 
         raise errors.StyleNotDefined(name)
 
+    @property
+    def name(self) -> str:
+        if self._name:
+            return self._name
+        else:
+            return "undefined"
+
+    @name.setter
+    def name(self, value:str) -> None:
+        self._name = value
+
+    @property
+    def companion(self) -> Field:
+        if self._companion:
+            return self._companion
+        else:
+            return None
+
+    @companion.setter
+    def companion(self, value:Field) -> Field:
+        self._companion = value
+
+
+class FieldReader(ABC):
+    """Get WMS layers (fields) from a file."""
+
+    def __init__(self, context:WMSServer, path:str):
+        self._context = context
+        self._path = path
+
+    @property
+    def context(self) -> WMSServer:
+        return self._context
+    
+    @context.setter
+    def context(self, context:WMSServer) -> None:
+        self._context = weakref.ref(context)
+    
+    @property
+    def path(self) -> str:
+        return self._path
+    
+    @path.setter
+    def path(self, path:str) -> None:
+        self._path = path
+    
+    @abstractmethod
+    def get_fields(self) -> list[Field]:
+        """Returns a list of wms layers (fields)
+
+        :raises NotImplementedError: [description]
+        :return: a list of wms layers (fields)
+        :rtype: list[Field]
+        """
+        raise NotImplementedError()
 
 class Layer:
     def __init__(self, name, title, zindex=0, description=None, keywords=[]):
@@ -146,7 +204,7 @@ class DataLayer(Layer):
 
     # TODO: check the time-zone of the dates....
 
-    def __init__(self, field):
+    def __init__(self, field:Field):
         super(DataLayer, self).__init__(field.name, field.title)
         assert field.time is None or isinstance(field.time, datetime.datetime)
         self._first = field
@@ -225,11 +283,11 @@ class Availability:
         self._auto_add_plotter_layers = auto_add_plotter_layers
 
     @property
-    def context(self):
+    def context(self) -> WMSServer:
         return self._context()
 
-    # @property.setter
-    def set_context(self, context):
+    # @context.setter
+    def set_context(self, context:WMSServer):
         self._context = weakref.ref(context)
 
     @property
@@ -281,11 +339,11 @@ class Availability:
 
 class Plotter:
     @property
-    def context(self):
+    def context(self) -> WMSServer:
         return self._context()
 
-    # @property.setter
-    def set_context(self, context):
+    # @context.setter
+    def set_context(self, context:WMSServer):
         self._context = weakref.ref(context)
 
     def layers(self):
@@ -322,9 +380,9 @@ class Plotter:
 
 class Styler:
     @property
-    def context(self):
+    def context(self) -> WMSServer:
         return self._context()
 
-    # @property.setter
-    def set_context(self, context):
+    # @context.setter
+    def set_context(self, context:WMSServer):
         self._context = weakref.ref(context)
