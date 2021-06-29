@@ -6,6 +6,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+from skinnywms.server import WMSServer
 from skinnywms import datatypes
 import logging
 from skinnywms import grib_bindings
@@ -58,7 +59,7 @@ class GRIBField(datatypes.Field):
                 # check if this companion matches
                 found = self.matches(possible_companion)
                 if found:
-                    self.update_companion(companion=possible_companion)
+                    self.update_companions(companion=possible_companion)
                     break
 
             if self.companion is None:
@@ -68,7 +69,7 @@ class GRIBField(datatypes.Field):
                     possible_matches[self.shortName] = [self]
                 else:
                     # there could be multiple fields with same name (shortName)
-                    # but different time or level properties
+                    # but with different time or level properties
                     # for matching, so remember them all
                     # as possible candidates for matching
                     possible_matches[self.shortName].append(self)
@@ -85,13 +86,16 @@ class GRIBField(datatypes.Field):
             )
 
     def matches(self, other):
-        """Check if companion has matching grib properties time, levtype and levelist.
+        """Check if companion has matching grib properties (filename, time, levtype and levelist).
 
         :param companion: a grib field that can be used in combination to visualise self
         :type companion: GRIBField
         :return: True if companion matches the properties of self, else False
         :rtype: bool
         """
+        if self.path != other.path:
+            # TODO: matching up wind components from two different grib files is not supported in magics yet
+            return False
         if self.time != other.time:
             return False
         if self.levtype != other.levtype:
@@ -100,8 +104,10 @@ class GRIBField(datatypes.Field):
             return False
         return True
     
-    def update_companion(self, companion):
-        """Updates self.companion with the given companion. Updates render function and ucomponent and vcomponent attributes.
+    def update_companions(self, companion):
+        """Updates/overwrites self.companion with the given companion and vice versa. 
+        Updates render function and ucomponent and vcomponent attributes for 
+        self and companion.
 
         :param companion: the new companion field
         :type companion: GRIBField
@@ -122,7 +128,7 @@ class GRIBField(datatypes.Field):
         companion.render = companion.render_wind
 
     def update_layer_name_title(self):
-        """Updates name and title of the current layer.
+        """Updates name and title of the current layer and companion layer (if applicable)
         """
 
         nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
@@ -193,15 +199,14 @@ class GRIBField(datatypes.Field):
         return hash(self.__repr__())
 
 
-class GRIBReader:
+class GRIBReader(datatypes.FieldReader):
 
     """Get WMS layers from a GRIB file."""
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context, path):
-        self.path = path
-        self.context = context
+    def __init__(self, context:WMSServer, path:str):
+        super(GRIBReader,self).__init__(context=context, path=path)
 
     def get_fields(self):
         self.log.info("Scanning file: %s", self.path)
@@ -210,16 +215,10 @@ class GRIBReader:
 
         for i, m in enumerate(grib_bindings.GribFile(self.path)):
             fields.add(GRIBField(self.context, self.path, m, i))
-        
-        # remove fields that were successfully matched 
-        # and will be diplayed together with their companion
-        # (this does cleanup companion fields across multiple grib files)
-        companionfields = {item.companion for item in fields if not item.companion is None}
-        for gribfield in companionfields:
-            if gribfield in fields:
-                fields.remove(gribfield)
 
         if not fields:
             raise Exception("GRIBReader no 2D fields found in %s", self.path)
 
+        # fields that were successfully matched with their companion fields
+        # carry the same layer name and thus will be removed at a later stage
         return list(fields)
