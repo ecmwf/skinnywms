@@ -67,6 +67,7 @@ docker run --rm -p 5000:5000 -it \
     --env SKINNYWMS_PORT=5000 \
     --env SKINNYWMS_MOUNT=/mymodel/ \
     --env SKINNYWMS_UWSGI_WORKERS=4 \
+    --env SKINNYWMS_ENABLE_DIMENSION_GROUPING=1 \
       ecmwf/skinnywms
 ```
 Now you can access the ```GetCapabilities`` document for your data at http://localhost:5000/mymodel/wms?request=GetCapabilities
@@ -98,6 +99,8 @@ Limitations:
 ```bash
 grib_copy input_wind_u_component.grb2 input_wind_v_component.grib2 output_wind_u_v_combined.grb2
 ```
+
+- The time and elevation dimension implementations follow [OGC Met Ocean DWG WMS 1.3 Best Practice for using Web Map Services (WMS) with Time-Dependent or Elevation-Dependent Data](https://external.ogc.org/twiki_public/MetOceanDWG/MetOceanWMSBPOnGoingDrafts). To enable dimension grouping (disabled by default) set the environment variable ``SKINNYWMS_ENABLE_DIMENSION_GROUPING=1``
 
 - development stage: **Alpha**,
 

@@ -23,6 +23,10 @@ demo = os.path.join(os.path.dirname(__file__), "testdata", "sfc.grib")
 if os.environ.get("SKINNYWMS_DATA_PATH", "") != "":
     demo = os.environ.get("SKINNYWMS_DATA_PATH")
 
+enable_dimension_grouping = False
+if os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING", "") != "":
+    enable_dimension_grouping = (os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING") == "1")
+
 parser = argparse.ArgumentParser(description="Simple WMS server")
 
 parser.add_argument(
@@ -51,6 +55,11 @@ parser.add_argument(
     help="prefix used to pass information to magics",
 )
 
+parser.add_argument(
+    "--enable-dimension-grouping",
+    action='store_true',
+    help="Group together layers by more than the time dimension, e.g. by elevation"
+)
 
 args = parser.parse_args()
 
@@ -60,8 +69,13 @@ if args.style != "":
 if args.user_style != "":
     os.environ["MAGICS_USER_STYLE_PATH"] = args.user_style
 
+
+group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
+
 server = WMSServer(
-    Availability(args.path), Plotter(args.baselayer), Styler(args.user_style)
+    Availability(args.path, group_dimensions=group_dimensions), 
+    Plotter(args.baselayer), 
+    Styler(args.user_style)
 )
 
 

@@ -7,8 +7,8 @@ import threading
 from typing import Dict
 
 from skinnywms import datatypes
+from skinnywms.server import WMSServer
 from skinnywms.fields.NetCDFField import NetCDFReader
-
 from skinnywms.fields.GRIBField import GRIBReader
 
 __all__ = [
@@ -85,7 +85,7 @@ READERS:Dict[bytes,datatypes.FieldReader] = {
 }
 
 
-def _reader(context:any, path:str) -> datatypes.FieldReader: # GRIBReader | NetCDFReader:
+def _reader(context:WMSServer, path:str) -> datatypes.FieldReader: # GRIBReader | NetCDFReader
     with open(path, "rb") as f:
         header = f.read(4)
 

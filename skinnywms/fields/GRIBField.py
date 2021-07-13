@@ -11,7 +11,6 @@ from skinnywms import datatypes
 import logging
 from skinnywms import grib_bindings
 
-
 wind_companions = { "10u" : "10v", "u" : "v", "U_10m" : "V_10m", "U" : "V" }
 """A collection of wind u-component/v-component (key/value) grib shortName pairs that may be paired for better visualisation as wind barbs."""
 wind_ucomponents = set(wind_companions.keys())
@@ -31,6 +30,7 @@ class GRIBField(datatypes.Field):
     log = logging.getLogger(__name__)
 
     def __init__(self, context, path, grib, index):
+        super(datatypes.Field,self).__init__()
 
         self.path = path
         self.index = index
@@ -74,8 +74,6 @@ class GRIBField(datatypes.Field):
                     # as possible candidates for matching
                     possible_matches[self.shortName].append(self)
 
-        self.update_layer_name_title() # update layer name and title
-
         key = "style.grib.%s" % (self.name,)
         
         # Optimisation
@@ -85,7 +83,7 @@ class GRIBField(datatypes.Field):
                 self, grib, path, index
             )
 
-    def matches(self, other):
+    def matches(self, other) -> bool:
         """Check if companion has matching grib properties (filename, time, levtype and levelist).
 
         :param companion: a grib field that can be used in combination to visualise self
@@ -103,7 +101,7 @@ class GRIBField(datatypes.Field):
         if self.levelist != other.levelist: 
             return False
         return True
-    
+
     def update_companions(self, companion):
         """Updates/overwrites self.companion with the given companion and vice versa. 
         Updates render function and ucomponent and vcomponent attributes for 
@@ -127,23 +125,47 @@ class GRIBField(datatypes.Field):
         self.render = self.render_wind
         companion.render = companion.render_wind
 
-    def update_layer_name_title(self):
-        """Updates name and title of the current layer and companion layer (if applicable)
-        """
-
+    @property
+    def name(self) -> str:
+        # override getter for name
         nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+
+        if self.companion is None:
+            return "%s%s" % (self.shortName, nameSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+
+    @property
+    def group_name(self) -> str:
+        # override getter for name
+        nameSuffix = "" if self.levelist is None else "@%s" % (self.levtype)
+
+        if self.companion is None:
+            return "%s%s" % (self.shortName, nameSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+
+    @property
+    def title(self) -> str:
+        # override getter for title
         titleSuffix = "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
 
         if self.companion is None:
-            self.name = "%s%s" % (self.shortName, nameSuffix)
-            self.title = "%s%s" % (self.longName, titleSuffix)
+            return "%s%s" % (self.longName, titleSuffix)
         else:
-            self.name = "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
-            self.title = "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
-            self.companion.name = self.name
-            self.companion.title = self.title
+            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
 
-    def render_contour(self, context, driver, style, legend={}):
+    @property
+    def group_title(self) -> str:
+        # override getter for title
+        titleSuffix = "" if self.levelist is None else " @ %s" % (self.levtype)
+
+        if self.companion is None:
+            return "%s%s" % (self.longName, titleSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+
+    def render_contour(self, context, driver, style, legend={}) -> list:
         data = []
         params = dict(
             grib_input_file_name=self.path, grib_field_position=self.index + 1
@@ -157,7 +179,7 @@ class GRIBField(datatypes.Field):
 
         return data
     
-    def render_wind(self, context, driver, style, legend={}):
+    def render_wind(self, context, driver, style, legend={}) -> list:
         data = []
         
         params = dict(
@@ -186,16 +208,16 @@ class GRIBField(datatypes.Field):
             time=self.time.isoformat() if self.time is not None else None,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "GRIBField[%r,%r,%r]" % (self.path, self.index, self.mars)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, GRIBField):
             return self.__hash__() == other.__hash__()
         else:
             return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__repr__())
 
 
@@ -208,7 +230,7 @@ class GRIBReader(datatypes.FieldReader):
     def __init__(self, context:WMSServer, path:str):
         super(GRIBReader,self).__init__(context=context, path=path)
 
-    def get_fields(self):
+    def get_fields(self) -> list:
         self.log.info("Scanning file: %s", self.path)
 
         fields = set()
