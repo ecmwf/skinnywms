@@ -36,6 +36,8 @@ class GRIBField(datatypes.Field):
         self.index = index
         self.mars = grib.mars_request
         self.render = self.render_contour
+        self.context = context
+        self.grib = grib
 
         self.time = grib.valid_date
 
@@ -124,6 +126,12 @@ class GRIBField(datatypes.Field):
         # render these fields as wind
         self.render = self.render_wind
         companion.render = companion.render_wind
+
+        key = "style.grib.%s" % (self.name,)
+        self.styles = self.context.stash[key] = self.context.styler.grib_styles(
+                self, self.grib, self.path, self.ucomponent.index, self.vcomponent.index
+            )
+        companion.styles = self.styles
 
     @property
     def name(self) -> str:
