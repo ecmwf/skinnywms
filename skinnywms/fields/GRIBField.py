@@ -6,6 +6,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+from threading import settrace
+import weakref
+from skinnywms.grib_bindings.GribField import GribField
 from skinnywms.server import WMSServer
 from skinnywms import datatypes
 import logging
@@ -29,15 +32,17 @@ class GRIBField(datatypes.Field):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context, path, grib, index):
+    def __init__(self, context: WMSServer, path: str, grib:GribField, index:int):
         super(datatypes.Field,self).__init__()
 
         self.path = path
         self.index = index
         self.mars = grib.mars_request
         self.render = self.render_contour
-        self.context = context
-        self.grib = grib
+        self.byte_offset = grib.byte_offset
+
+        # self.context = context
+        # self.grib = grib
 
         self.time = grib.valid_date
 
@@ -85,6 +90,22 @@ class GRIBField(datatypes.Field):
                 self, grib, path, index
             )
 
+    @property
+    def grib(self) -> GribField:
+        return self._grib()
+    
+    @grib.setter
+    def grib(self, grib:GribField):
+        self._grib = weakref.ref(grib)
+    
+    @property
+    def context(self) -> WMSServer:
+        return self._context()
+
+    @context.setter
+    def context(self, context:WMSServer):
+        self._context = weakref.ref(context)
+
     def matches(self, other) -> bool:
         """Check if companion has matching grib properties (filename, time, levtype and levelist).
 
@@ -127,11 +148,11 @@ class GRIBField(datatypes.Field):
         self.render = self.render_wind
         companion.render = companion.render_wind
 
-        key = "style.grib.%s" % (self.name,)
-        self.styles = self.context.stash[key] = self.context.styler.grib_styles(
-                self, self.grib, self.path, self.ucomponent.index, self.vcomponent.index
-            )
-        companion.styles = self.styles
+        # key = "style.grib.%s" % (self.name,)
+        # self.styles = self.context.stash[key] = self.context.styler.grib_styles(
+        #         self, self.grib, self.path, self.ucomponent.byte_offset, self.vcomponent.byte_offset
+        #     )
+        # companion.styles = self.styles
 
     @property
     def name(self) -> str:
@@ -176,7 +197,9 @@ class GRIBField(datatypes.Field):
     def render_contour(self, context, driver, style, legend={}) -> list:
         data = []
         params = dict(
-            grib_input_file_name=self.path, grib_field_position=self.index + 1
+            grib_input_file_name=self.path, 
+            grib_field_position=self.byte_offset, 
+            grib_file_address_mode="byte_offset"
         )
 
         if style:
@@ -189,11 +212,12 @@ class GRIBField(datatypes.Field):
     
     def render_wind(self, context, driver, style, legend={}) -> list:
         data = []
-        
+
         params = dict(
             grib_input_file_name = self.path, 
-            grib_wind_position_1 = self.ucomponent.index+1, 
-            grib_wind_position_2 = self.vcomponent.index+1
+            grib_wind_position_1 = self.ucomponent.byte_offset, 
+            grib_wind_position_2 = self.vcomponent.byte_offset,
+            grib_file_address_mode="byte_offset"
         )
 
         if style:
