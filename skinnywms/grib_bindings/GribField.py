@@ -8,9 +8,10 @@
 #
 
 import datetime
+from typing import Dict
 import numpy as np
 
-from .bindings import grib_handle_delete, grib_get, grib_values
+from .bindings import grib_get_metadata, grib_handle_delete, grib_get, grib_values
 from .bindings import (
     grib_get_keys_values,
     grib_get_gaussian_latitudes,
@@ -327,6 +328,10 @@ class GribField(object):
             raise Exception(
                 "Unsupported level type '{}' in grib {}".format(self.levtype, path)
             )
+
+    @property
+    def metadata(self) -> Dict[str,str]:
+        return grib_get_metadata(self._handle)
 
     @property
     def byte_offset(self):

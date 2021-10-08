@@ -7,6 +7,7 @@
 # does it submit to any jurisdiction.
 
 from threading import settrace
+from typing import Dict
 import weakref
 from skinnywms.grib_bindings.GribField import GribField
 from skinnywms.server import WMSServer
@@ -41,8 +42,9 @@ class GRIBField(datatypes.Field):
         self.render = self.render_contour
         self.byte_offset = grib.byte_offset
 
-        # self.context = context
-        # self.grib = grib
+        self.metadata = grib.metadata
+
+        self.context = context
 
         self.time = grib.valid_date
 
@@ -86,21 +88,33 @@ class GRIBField(datatypes.Field):
         # Optimisation
         self.styles = context.stash.get(key)
         if self.styles is None:
-            self.styles = context.stash[key] = context.styler.grib_styles(
-                self, grib, path, index
-            )
+            self.styles = context.stash[key] = context.styler.grib_styles_from_meta(self)
 
     @property
-    def grib(self) -> GribField:
-        return self._grib()
+    def metadata(self) -> Dict[str,str]:
+        if self.companion is None:
+            return self._metadata
+        else:
+            joined_meta = {}
+            common_keys = set(self.ucomponent._metadata.keys()).intersection(set(self.vcomponent._metadata.keys()))
+            for key in common_keys:
+                joined_meta[key] = "%s/%s" % (self.ucomponent._metadata[key], self.vcomponent._metadata[key])
+            return joined_meta
     
-    @grib.setter
-    def grib(self, grib:GribField):
-        self._grib = weakref.ref(grib)
+    @metadata.setter
+    def metadata(self, metadata:Dict[str,str]):
+        self._metadata = metadata
+
     
     @property
     def context(self) -> WMSServer:
         return self._context()
+    
+    @property
+    def magics_metadata():
+        return {
+            ""
+        }
 
     @context.setter
     def context(self, context:WMSServer):
@@ -148,11 +162,9 @@ class GRIBField(datatypes.Field):
         self.render = self.render_wind
         companion.render = companion.render_wind
 
-        # key = "style.grib.%s" % (self.name,)
-        # self.styles = self.context.stash[key] = self.context.styler.grib_styles(
-        #         self, self.grib, self.path, self.ucomponent.byte_offset, self.vcomponent.byte_offset
-        #     )
-        # companion.styles = self.styles
+        key = "style.grib.%s" % (self.name,)
+        self.styles = self.context.stash[key] = self.context.styler.grib_styles_from_meta(self)
+        companion.styles = self.styles
 
     @property
     def name(self) -> str:

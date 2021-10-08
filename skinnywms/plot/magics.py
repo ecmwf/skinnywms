@@ -13,6 +13,8 @@ import threading
 import pprint
 import json
 
+from numpy.lib.utils import deprecate
+
 from Magics import macro
 
 from skinnywms import datatypes, errors
@@ -519,6 +521,25 @@ class Styler(datatypes.Styler):
 
         return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
 
+    def grib_styles_from_meta(self, field:GRIBField):
+        if self.user_style:
+            return [MagicsWebStyle(self.user_style["name"])]
+
+        with LOCK:
+            try:
+                styles = self.driver.wmsstyles(
+                    self.driver.minput(
+                        input_metadata = field.metadata
+                    )
+                )
+                # Looks like they are provided in reverse order
+            except Exception as e:
+                self.log.exception("grib_styles: Error: %s", e)
+                styles = {}
+
+        return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
+
+    @deprecate
     def grib_styles(self, field:GRIBField, grib:GribField, path:str, byte_offset:int, byte_offset_companion:int=None):
         if self.user_style:
             return [MagicsWebStyle(self.user_style["name"])]
@@ -570,33 +591,9 @@ class Styler(datatypes.Styler):
         if self.user_style:
             return driver.mwind(self.user_style)
 
-        # # automatic wind styling
-        # return driver.mwind(
-        #     legend,
-        #     wind_automatic_setting="style_name",
-        #     wind_style_name=style.name,
-        # )
-
-        # manual wind style
-        return driver.mwind(wind_thinning_method = "automatic", 
-            wind_field_type = "flags",
-            wind_advanced_method = "on",
-            wind_advanced_colour_max_value = 25.00,
-            wind_advanced_colour_min_value = 0.00,
-            wind_advanced_colour_table_colour_method = "calculate",
-            wind_advanced_colour_max_level_colour = "red",
-            wind_advanced_colour_min_level_colour = "blue",
-            wind_advanced_colour_direction = "clockwise",
-            wind_arrow_unit_velocity = 10., 
-            contour_shade_colour_direction = "clockwise",
-            wind_flag_calm_indicator_size = 0.10,
-            wind_flag_length = 0.50,
-            wind_flag_origin_marker_size = 0.1,
-            wind_flag_origin_marker = "dot",
-            wind_thinning_factor = 5)
-        # TODO : add automatic styling for winds 
-        # return driver.mwinds(
-        #     legend,
-        #     contour_automatic_setting="style_name",
-        #     contour_style_name=style.name,
-        # )
+        # automatic wind styling
+        return driver.mwind(
+            legend,
+            wind_automatic_setting="style_name",
+            wind_style_name=style.name,
+        )
