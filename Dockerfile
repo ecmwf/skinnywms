@@ -1,5 +1,6 @@
 # Build image
 # Use slim python 3 + Magics image as base
+#ARG MAGICS_IMAGE=ecmwf/magics:2021.05.1
 ARG MAGICS_IMAGE=ecmwf/magics:latest
 FROM ${MAGICS_IMAGE}
 

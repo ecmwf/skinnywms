@@ -329,6 +329,10 @@ class GribField(object):
             )
 
     @property
+    def byte_offset(self):
+        return self._offset
+
+    @property
     def values(self):
         if self._values is None:
             self._values = grib_values(self._handle)
