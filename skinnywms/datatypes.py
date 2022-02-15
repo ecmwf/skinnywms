@@ -216,7 +216,7 @@ class Dimension:
 
 
 class TimeDimension(Dimension):
-    def __init__(self, times:list[datetime.datetime], time_unit:str="hours"):
+    def __init__(self, times:list[datetime.datetime], time_unit:str="minutes"):
         super(TimeDimension, self).__init__(
             name = "time", 
             units = "ISO8601",
