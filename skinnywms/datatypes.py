@@ -216,7 +216,7 @@ class Dimension:
 
 
 class TimeDimension(Dimension):
-    def __init__(self, times:list[datetime.datetime], time_unit:str="hours"):
+    def __init__(self, times:list[datetime.datetime]):
         super(TimeDimension, self).__init__(
             name = "time", 
             units = "ISO8601",
@@ -224,42 +224,70 @@ class TimeDimension(Dimension):
             extent = "",
             unitSymbol=None)
         times = sorted(times)
-
-        #self.name = "time"
-        #self.units = "ISO8601"
         self.default = times[0].isoformat() + "Z"
 
+        self.extent = TimeDimension.format_extent(times)
+    
+    def format_extent(times:list[datetime.datetime]) -> str:
+        """Formats a sorted list of times as WMS time extent string.
+
+        :param times: a sorted list of times
+        :type times: list[datetime.datetime]
+        :return: the WMS time extent string
+        :rtype: str
+        """
         extent = []
-        last_step = None
-        last_iso = None
+        last_delta = None
+        last_iso_ts = None
+        prev_time = times[0]
 
-        prev = times[0]
-
-        def step_diff(date1, date2, seconds):
-            step = date1 - date2
-            return step.days * 24 + step.seconds / seconds
-
-        if time_unit == "hours":
-            seconds = 3600
-            unit = "H"
-
-        if time_unit == "minutes":
-            seconds = 60
-            unit = "M"
-
+        # build the textual representation of the time dimension extent
         for time in times:
-            iso = time.isoformat() + "Z"
+            iso_ts = time.isoformat() + "Z"
 
-            step = step_diff(time, prev, seconds)
-            prev = time
-            if step == last_step:
-                extent[-1] = "/".join([last_iso, iso, "PT%d%s" % (step, unit)])
+            delta = time - prev_time
+            prev_time = time
+            if delta == last_delta and delta != datetime.timedelta(0):
+                extent[-1] = "/".join([last_iso_ts, iso_ts, TimeDimension.format_iso_8601_duration(delta)])
             else:
-                extent.append(iso)
-                last_step = step
-                last_iso = iso
+                extent.append(iso_ts)
+                last_delta = delta
+                last_iso_ts = iso_ts
 
-        self.extent = ",".join(extent)
+        return ",".join(extent)
+    
+    def format_iso_8601_duration(period:datetime.timedelta) -> str:
+        """Converts a timedelta object into ISO 8601 duration/period format.
+
+        :param period: the period to be converted
+        :return: the period in ISO 8601 duration format
+        :rtype: str
+        """
+
+        ret = "P"
+        if period.days != 0:
+            ret += "%dD" % period.days
+
+        if period.seconds > 0 or period.microseconds > 0:
+            ret += "T"
+        else:
+            return ret # no seconds or microseconds in this period
+
+        remainder_s = period.seconds
+        if remainder_s >= 3600:
+            ret += "%dH" % (remainder_s / 3600) # extract whole hours
+            remainder_s = remainder_s % 3600
+
+        if remainder_s >= 60:
+            ret += "%dM" % (remainder_s / 60) # extract whole minutes
+            remainder_s = remainder_s % 60
+
+        if remainder_s > 0 and period.microseconds == 0:
+            ret += "%dS" % remainder_s # only whole seconds
+        elif period.microseconds > 0:
+            ret += "%fS" % (remainder_s + period.microseconds/1000000) # floating point number
+        return ret
+
 
 class ElevationDimension(Dimension):
     """An elevation dimension representing vertical 'levels' as described in
