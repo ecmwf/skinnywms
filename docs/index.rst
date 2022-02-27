@@ -11,8 +11,9 @@ Documentation
 **Getting Started**
 
 * :doc:`overview`
+* :doc:`predefined-styles`
+* :doc:`styles`
 * :doc:`installing`
-* :doc:`adding your own styles`
 
 
 .. toctree::
@@ -21,8 +22,9 @@ Documentation
    :caption: Getting Started
 
    overview
-   installing
+   predefined-styles
    styles
+   installing
 
 
 License
