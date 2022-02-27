@@ -1,0 +1,14 @@
+# These are the requirements for readthedoc
+ipykernel
+filelock
+nbsphinx
+sphinx_rtd_theme
+sphinx-panels
+pyyaml
+Pygments>=2.6.1
+tqdm
+markdown
+eccodes
+magics
+ecmwflibs
+termcolor
