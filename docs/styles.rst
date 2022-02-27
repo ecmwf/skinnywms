@@ -1,7 +1,7 @@
-.. _overview:
+.. _styles:
 
 Add your own styles
 =====================
 
-Coming .
+
 
