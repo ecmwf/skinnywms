@@ -11,7 +11,7 @@ Documentation
 **Getting Started**
 
 * :doc:`overview`
-* :doc:`predefined-styles`
+* :doc:`auto_gallery/styles/index`
 * :doc:`styles`
 * :doc:`installing`
 
@@ -22,7 +22,7 @@ Documentation
    :caption: Getting Started
 
    overview
-   predefined-styles
+   auto_gallery/styles/index
    styles
    installing
 
