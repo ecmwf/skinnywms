@@ -68,6 +68,7 @@ extensions = [
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx.ext.graphviz",
+    "sphinx_gallery.gen_gallery",
     # "sphinx-prompt",
     # "climetlab.sphinxext.sources",
     # "climetlab.sphinxext.command_output",
@@ -123,3 +124,10 @@ html_css_files = ["style.css"]
 
 # See https://www.sphinx-doc.org/en/master/usage/extensions/graphviz.html
 graphviz_output_format = "svg"
+
+sphinx_gallery_conf = {
+    "examples_dirs": ["gallery/styles"],  # path to your example scripts
+    "gallery_dirs": [
+        "auto_gallery/styles"
+    ],  # path to where to save gallery generated output
+}
