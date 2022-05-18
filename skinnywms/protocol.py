@@ -104,6 +104,7 @@ _WMS_KNOWN_PARAMS = {
         ("version", False, None),
         ("width", False, int),
         ("transparent", False, _transparent_norm),
+        ("legend_title_position_ratio", False, float),
     ),
     ("getlegendgraphic", "1.3.0"): (
         ("exceptions", False, None),
@@ -115,6 +116,7 @@ _WMS_KNOWN_PARAMS = {
         ("version", False, None),
         ("width", False, int),
         ("transparent", False, _transparent_norm),
+        ("legend_title_position_ratio", False, float),
     ),
 }
 

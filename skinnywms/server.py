@@ -243,6 +243,7 @@ class WMSServer:
         width=600,
         exceptions=None,
         transparent=True,
+        legend_title_position_ratio=50.0,
     ):
 
         time = None
@@ -262,6 +263,7 @@ class WMSServer:
             version,
             width,
             transparent,
+            legend_title_position_ratio,
         )
 
         return format, path
