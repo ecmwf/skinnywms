@@ -1,0 +1,29 @@
+version: '3.7'
+
+services:
+  skinnywms:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      args:
+        - MAGICS_IMAGE=ecmwf/magics:latest
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    volumes:
+      - '.:/app/skinnywms'
+      - './skinnywms/testdata:/data'
+      # - './skinnywms/testdata/ICON-IMS:/data'
+    # override the default command to run flask app without uwgsi
+    # to make use of automatic reload on code changes for development purposes
+    command: python /app/skinnywms/demo.py --host=${SKINNYWMS_HOST} --port=${SKINNYWMS_PORT} --path=${SKINNYWMS_DATA_PATH}
+    restart: always
+    ports:
+      - 5000:5000
+    env_file: 
+      - ./.env
+    # environment: 
+    #   - SKINNYWMS_DATA_PATH=${SKINNYWMS_DATA_PATH}
+    #   - SKINNYWMS_HOST=${SKINNYWMS_HOST}
+    #   - SKINNYWMS_PORT=${SKINNYWMS_PORT}
+    #   - FLASK_ENV=${FLASK_ENV}

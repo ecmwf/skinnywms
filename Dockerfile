@@ -1,8 +1,22 @@
 # Build image
 # Use slim python 3 + Magics image as base
-ARG MAGICS_IMAGE=ecmwf/magics:4.2.4
+#ARG MAGICS_IMAGE=ecmwf/magics:2021.05.1
+ARG MAGICS_IMAGE=ecmwf/magics:latest
 FROM ${MAGICS_IMAGE}
 
+# Install UWSGI
+RUN set -ex \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install uwsgi \
+    && apt-get purge -y --auto-remove \
+        gcc \
+        build-essential
+
+# Install skinnywms
 RUN set -eux \
     && mkdir -p /app/
 
@@ -14,13 +28,30 @@ COPY requirements.txt /root/
 RUN set -ex \
     && pip install -r /root/requirements.txt
 
+ENV SKINNYWMS_HOST=0.0.0.0
+ENV SKINNYWMS_PORT=5000
+ENV SKINNYWMS_MOUNT=/
+ENV SKINNYWMS_DATA_PATH=
+ENV SKINNYWMS_UWSGI_WORKERS=4
+
+USER nobody
+
+# UWSGI entrypoint
+CMD uwsgi \
+        --http ${SKINNYWMS_HOST}:${SKINNYWMS_PORT} \
+        --master \
+        --process ${SKINNYWMS_UWSGI_WORKERS} \
+        --mount ${SKINNYWMS_MOUNT}=skinnywms.wmssvr:application \
+        --manage-script-name \
+        --uid nobody
+
 # demo application will listen at http://0.0.0.0:5000
 EXPOSE 5000/tcp
 
 # start demo
 # add option --path <directory with grib files>
 # to look for grib files in specific directory
-CMD python /app/skinnywms/demo.py --host='0.0.0.0' --port=5000
+###CMD python /app/skinnywms/demo.py --host='0.0.0.0' --port=5000
 
 # METADATA
 # Build-time metadata as defined at http://label-schema.org

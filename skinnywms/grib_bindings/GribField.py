@@ -8,9 +8,10 @@
 #
 
 import datetime
+from typing import Dict
 import numpy as np
 
-from .bindings import grib_handle_delete, grib_get, grib_values
+from .bindings import grib_get_metadata, grib_handle_delete, grib_get, grib_values
 from .bindings import (
     grib_get_keys_values,
     grib_get_gaussian_latitudes,
@@ -289,6 +290,7 @@ LEVEL_TYPE_CODES = {
     103: SingleLevel(),  # 103 sfc Specified height level above ground (m)
     106: SingleLevel(),  # 106 sfc Depth below land surface (m)
     111: ModelLevel(),  # 111 ml Eta level
+    150: ModelLevel(),  # 150 dwd model level
 }
 
 LEVEL_TYPES = {"pl": PressureLevel(), "sfc": SingleLevel(), "ml": ModelLevel()}
@@ -326,6 +328,14 @@ class GribField(object):
             raise Exception(
                 "Unsupported level type '{}' in grib {}".format(self.levtype, path)
             )
+
+    @property
+    def metadata(self) -> Dict[str,str]:
+        return grib_get_metadata(self._handle)
+
+    @property
+    def byte_offset(self):
+        return self._offset
 
     @property
     def values(self):

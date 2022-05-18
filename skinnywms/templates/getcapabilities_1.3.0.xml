@@ -125,7 +125,12 @@
 	{% endif %}
 
         {% for v in l.dimensions %}
-        <Dimension name="{{ v.name }}" default="{{ v.default }}" units="{{ v.units }}"  multipleValues="0" nearestValue="0">{{ v.extent }}</Dimension>
+        {% if v.unitSymbol == None %}
+        <Dimension name="{{ v.name }}" default="{{ v.default }}" units="{{ v.units }}" multipleValues="0" nearestValue="0">{{ v.extent }}</Dimension>
+        {% else %}
+        <Dimension name="{{ v.name }}" default="{{ v.default }}" units="{{ v.units }}" unitSymbol="{{ v.unitSymbol }}" multipleValues="0" nearestValue="0">{{ v.extent }}</Dimension>
+        
+        {% endif %}
         {% endfor %}
 
         {% for s in l.styles %}

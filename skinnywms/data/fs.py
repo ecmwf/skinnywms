@@ -4,10 +4,11 @@ import logging
 import os
 import traceback
 import threading
+from typing import Dict
 
 from skinnywms import datatypes
+from skinnywms.server import WMSServer
 from skinnywms.fields.NetCDFField import NetCDFReader
-
 from skinnywms.fields.GRIBField import GRIBReader
 
 __all__ = [
@@ -44,7 +45,7 @@ class Availability(datatypes.Availability):
                 )
             self._loaded = True
 
-    def add_directory(self, path):
+    def add_directory(self, path:str):
         for fname in sorted(os.listdir(path)):
             fname = os.path.join(path, fname)
             if os.path.isdir(fname):
@@ -54,7 +55,7 @@ class Availability(datatypes.Availability):
 
             self.add_file(fname)
 
-    def add_file(self, path):
+    def add_file(self, path:str):
         self.log.info("Scanning %s", path)
         try:
             reader = _reader(self.context, path)
@@ -76,7 +77,7 @@ class Availability(datatypes.Availability):
         return d
 
 
-READERS = {
+READERS:Dict[bytes,datatypes.FieldReader] = {
     b"GRIB": GRIBReader,
     b"\x89HDF": NetCDFReader,
     b"CDF\x01": NetCDFReader,
@@ -84,7 +85,7 @@ READERS = {
 }
 
 
-def _reader(context, path):
+def _reader(context:WMSServer, path:str) -> datatypes.FieldReader: # GRIBReader | NetCDFReader
     with open(path, "rb") as f:
         header = f.read(4)
 
