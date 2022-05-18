@@ -357,7 +357,7 @@ class Plotter(datatypes.Plotter):
             return format, output_fname
 
     def legend(
-        self, context, output, format, height, layer, style, version, width, transparent
+        self, context, output, format, height, layer, style, version, width, transparent, legend_title_position_ratio
     ):
 
         try:
@@ -430,6 +430,7 @@ class Plotter(datatypes.Plotter):
                 legend_box_blanking=not transparent,
                 legend_text_font_size=legend_font_size,
                 legend_text_colour="white",
+                legend_title_position_ratio=legend_title_position_ratio,
             )
 
             # self.log.debug('plot(): Calling self.driver.plot(%s)', args)
