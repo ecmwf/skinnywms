@@ -6,7 +6,6 @@
 .vscode
 hooks*
 Makefile
-skinnywms/testdata/*/*
-docker-compose.yaml
+docker-compose.yml
 venv*
 
