@@ -1,4 +1,5 @@
-from __future__ import annotations
+# -*- coding: future_annotations -*-
+# from __future__ import annotations
 from abc import ABC, abstractmethod # see https://www.python.org/dev/peps/pep-0563/
 # (C) Copyright 2012-2019 ECMWF.
 #
@@ -12,6 +13,9 @@ import datetime
 import logging
 from skinnywms.server import WMSServer
 from skinnywms import errors
+
+from typing import List, Dict
+
 import weakref
 
 __all__ = [
@@ -165,17 +169,17 @@ class FieldReader(ABC):
         self._path = path
     
     @abstractmethod
-    def get_fields(self) -> list[Field]:
+    def get_fields(self) -> List[Field]:
         """Returns a list of wms layers (fields)
 
         :raises NotImplementedError: [description]
         :return: a list of wms layers (fields)
-        :rtype: list[Field]
+        :rtype: List[Field]
         """
         raise NotImplementedError()
 
 class Layer:
-    def __init__(self, name:str, title:str, zindex:int=0, description:str=None, keywords:list[str]=[]):
+    def __init__(self, name:str, title:str, zindex:int=0, description:str=None, keywords:List[str]=[]):
         self.name = name
         self.title = title
         self.legend_title = self.title
@@ -216,7 +220,7 @@ class Dimension:
 
 
 class TimeDimension(Dimension):
-    def __init__(self, times:list[datetime.datetime]):
+    def __init__(self, times:List[datetime.datetime]):
         super(TimeDimension, self).__init__(
             name = "time", 
             units = "ISO8601",
@@ -228,11 +232,11 @@ class TimeDimension(Dimension):
 
         self.extent = TimeDimension.format_extent(times)
     
-    def format_extent(times:list[datetime.datetime]) -> str:
+    def format_extent(times:List[datetime.datetime]) -> str:
         """Formats a sorted list of times as WMS time extent string.
 
         :param times: a sorted list of times
-        :type times: list[datetime.datetime]
+        :type times: List[datetime.datetime]
         :return: the WMS time extent string
         :rtype: str
         """
@@ -301,7 +305,7 @@ class ElevationDimension(Dimension):
     2) Named surfaces
     <Dimension name="elevation" units="computed_surface" unitSymbol="" default="0" multipleValues="0" nearestValue="0" current="0">1/90/1</Dimension>
     """
-    def __init__(self, levels:list[str], default:str, units:str="computed_surface", unitSymbol:str=""):
+    def __init__(self, levels:List[str], default:str, units:str="computed_surface", unitSymbol:str=""):
         super(ElevationDimension, self).__init__(
             name = "elevation", 
             units = units,
@@ -474,7 +478,7 @@ class DataLayer(Layer):
 class Availability:
     def __init__(self, auto_add_plotter_layers:bool=True, group_dimensions:bool=False):
         self._context = None
-        self._layers:dict[str,DataLayer] = {}
+        self._layers:Dict[str,DataLayer] = {}
         self._aliases = {}
         self._auto_add_plotter_layers = auto_add_plotter_layers
         self._group_dimensions=group_dimensions

@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backup-restore
+  namespace: sbu-accounting-prod
+spec:
+  containers:
+  - command:
+    - sleep
+    - inifinity
+    env:
+    - name: PGHOST
+      value: postgresql-0.postgresql
+    image: eccr.ecmwf.int/webdev/postgresql13:2021-04-06-001
+    imagePullPolicy: IfNotPresent
+    name: backup
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    securityContext:
+      readOnlyRootFilesystem: true
+    volumeMounts:
+    - mountPath: /backup
+      name: backup
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  imagePullSecrets:
+  - name: registry-creds
+  restartPolicy: Never
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: backup
+    persistentVolumeClaim:
+      claimName: postgresql-backups

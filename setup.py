@@ -19,7 +19,6 @@ import os
 
 import setuptools
 
-
 def read(fname):
     file_path = os.path.join(os.path.dirname(__file__), fname)
     return io.open(file_path, encoding="utf-8").read()
@@ -48,8 +47,11 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        "ecmwflibs",
+        "ecmwflibs==0.4.12",
+        "Magics",
         "Flask",
+        "xarray",
+        "future-annotations", # A backport of __future__ annotations to python<3.7
     ],
     entry_points={
         "console_scripts": ["skinny-wms=skinnywms.skinny:main"],

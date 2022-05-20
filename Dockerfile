@@ -1,8 +1,7 @@
 # Build image
-# Use slim python 3 + Magics image as base
-#ARG MAGICS_IMAGE=ecmwf/magics:2021.05.1
-ARG MAGICS_IMAGE=ecmwf/magics:latest
-FROM ${MAGICS_IMAGE}
+# Use slim python 3 image as base
+ARG PYTHON_IMAGE=python:3.6-slim-buster
+FROM ${PYTHON_IMAGE}
 
 # Install UWSGI
 RUN set -ex \
@@ -10,6 +9,7 @@ RUN set -ex \
     && apt-get install -y --no-install-recommends \
         gcc \
         build-essential \
+        libglib2.0 \
     && rm -rf /var/lib/apt/lists/* \
     && pip install uwsgi \
     && apt-get purge -y --auto-remove \
@@ -21,12 +21,7 @@ RUN set -eux \
     && mkdir -p /app/
 
 COPY . /app/skinnywms
-RUN pip install /app/skinnywms --no-dependencies
-
-# Install Python run-time dependencies.
-COPY requirements.txt /root/
-RUN set -ex \
-    && pip install -r /root/requirements.txt
+RUN pip install /app/skinnywms
 
 ENV SKINNYWMS_HOST=0.0.0.0
 ENV SKINNYWMS_PORT=5000
