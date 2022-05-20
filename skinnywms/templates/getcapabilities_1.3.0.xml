@@ -139,9 +139,9 @@
           <Title>{{ s.title }}</Title>
           <Abstract>{{ s.description }}</Abstract>
 	  
-          <LegendURL width="500" height="125">
+          <LegendURL width="1024" height="128">
             <Format>image/png</Format>
-            <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="{{ service.url }}?request=GetLegendGraphic&amp;layer={{ l.name }}&amp;style={{ s.name }}&amp;width=500&amp;height=125"/>
+            <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="{{ service.url }}?request=GetLegendGraphic&amp;layer={{ l.name }}&amp;style={{ s.name }}&amp;width=1024&amp;height=128"/>
           </LegendURL>
 	  
         </Style>
