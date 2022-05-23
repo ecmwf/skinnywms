@@ -1,6 +1,6 @@
 # Build image
 # Use slim python 3 image as base
-ARG PYTHON_IMAGE=python:3.6-slim-buster
+ARG PYTHON_IMAGE=python:3.9-slim-buster
 FROM ${PYTHON_IMAGE}
 
 # Install UWSGI
@@ -29,7 +29,7 @@ ENV SKINNYWMS_MOUNT=/
 ENV SKINNYWMS_DATA_PATH=
 ENV SKINNYWMS_UWSGI_WORKERS=4
 
-USER nobody
+#USER nobody
 
 # UWSGI entrypoint
 CMD uwsgi \
