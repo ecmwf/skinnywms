@@ -48,6 +48,8 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "ecmwflibs>=0.4.16",
+        "netCDF4", 
+        "dask[array]",
         "Magics",
         "Flask",
         "xarray",
