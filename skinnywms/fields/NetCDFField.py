@@ -121,6 +121,7 @@ class NetCDFField(datatypes.Field):
 
         self.name = self.variable
 
+        self.levelist = None
         # if level:
         #     self.name += '_' + str(level)
 
@@ -148,6 +149,9 @@ class NetCDFField(datatypes.Field):
 
             if isinstance(s, TimeSlice):
                 self.time = s.value
+            
+            # if isinstance(s, Slice):
+            #     self.levelist = s.value
 
             if s.is_info:
                 self.title += " (" + s.name + "=" + str(s.value) + ")"
