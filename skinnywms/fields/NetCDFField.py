@@ -6,6 +6,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+from skinnywms.server import WMSServer
 from skinnywms import datatypes
 import logging
 import datetime
@@ -120,6 +121,7 @@ class NetCDFField(datatypes.Field):
 
         self.name = self.variable
 
+        self.levelist = None
         # if level:
         #     self.name += '_' + str(level)
 
@@ -147,6 +149,9 @@ class NetCDFField(datatypes.Field):
 
             if isinstance(s, TimeSlice):
                 self.time = s.value
+            
+            # if isinstance(s, Slice):
+            #     self.levelist = s.value
 
             if s.is_info:
                 self.title += " (" + s.name + "=" + str(s.value) + ")"
@@ -203,15 +208,14 @@ class NetCDFField(datatypes.Field):
         )
 
 
-class NetCDFReader:
+class NetCDFReader(datatypes.FieldReader):
 
     """Get WMS layers from a NetCDF file."""
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context, path):
-        self.path = path
-        self.context = context
+    def __init__(self, context:WMSServer, path:str):
+        super(NetCDFReader,self).__init__(context=context, path=path)
         self.log.info("__init__")
 
     def get_fields(self):

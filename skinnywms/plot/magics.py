@@ -13,9 +13,13 @@ import threading
 import pprint
 import json
 
+from numpy.lib.utils import deprecate
+
 from Magics import macro
 
 from skinnywms import datatypes, errors
+from skinnywms.fields.GRIBField import GRIBField
+from skinnywms.grib_bindings.GribField import GribField
 
 
 __all__ = [
@@ -243,6 +247,7 @@ class Plotter(datatypes.Plotter):
             "page_frame": "off",
             "skinny_mode": "on",
             "page_id_line": "off",
+            "subpage_gutter_percentage": 20., 
         }
 
         # add extra settings for polar stereographic projection when
@@ -392,6 +397,7 @@ class Plotter(datatypes.Plotter):
                     subpage_y_length=height_cm,
                     subpage_x_position=0.0,
                     subpage_y_position=0.0,
+                    subpage_gutter_percentage = 20., 
                     output_width=width,
                     page_frame="off",
                     page_id_line="off",
@@ -485,7 +491,7 @@ class Styler(datatypes.Styler):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, user_style=None, driver=macro):
+    def __init__(self, user_style:str=None, driver=macro):
         self.user_style = None
         self.driver = driver
         if user_style:
@@ -516,17 +522,51 @@ class Styler(datatypes.Styler):
 
         return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
 
-    def grib_styles(self, field, grib, path, index):
+    def grib_styles_from_meta(self, field:GRIBField):
         if self.user_style:
             return [MagicsWebStyle(self.user_style["name"])]
 
         with LOCK:
             try:
                 styles = self.driver.wmsstyles(
-                    self.driver.mgrib(
-                        grib_input_file_name=path, grib_field_position=index + 1
+                    self.driver.minput(
+                        input_metadata = field.metadata
                     )
                 )
+                # Looks like they are provided in reverse order
+            except Exception as e:
+                self.log.exception("grib_styles: Error: %s", e)
+                styles = {}
+
+        return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
+
+    @deprecate
+    def grib_styles(self, field:GRIBField, grib:GribField, path:str, byte_offset:int, byte_offset_companion:int=None):
+        if self.user_style:
+            return [MagicsWebStyle(self.user_style["name"])]
+
+        with LOCK:
+            try:
+                if byte_offset_companion:
+                    
+                    styles = self.driver.wmsstyles(
+                        self.driver.mgrib(
+                            grib_input_file_name=path,
+                            grib_wind_position_1=byte_offset, 
+                            grib_wind_position_2=byte_offset_companion,
+                            grib_file_address_mode="byte_offset",
+                            grib_wind_style=True
+                        )
+                    )
+
+                else:
+                    styles = self.driver.wmsstyles(
+                        self.driver.mgrib(
+                            grib_input_file_name=path, 
+                            grib_field_position=grib.byte_offset, 
+                            grib_file_address_mode="byte_offset"
+                        )
+                    )
                 # Looks like they are provided in reverse order
             except Exception as e:
                 self.log.exception("grib_styles: Error: %s", e)
@@ -552,10 +592,9 @@ class Styler(datatypes.Styler):
         if self.user_style:
             return driver.mwind(self.user_style)
 
-        return driver.mwind(wind_thinning_method = "automatic", wind_thinning_factor = 5)
-        # TODO : add automatic styling for winds 
-        # return driver.mwinds(
-        #     legend,
-        #     contour_automatic_setting="style_name",
-        #     contour_style_name=style.name,
-        # )
+        # automatic wind styling
+        return driver.mwind(
+            legend,
+            wind_automatic_setting="style_name",
+            wind_style_name=style.name,
+        )
