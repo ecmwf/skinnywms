@@ -1,3 +1,11 @@
 .git*
+.dockerignore
+.env
+.s3env
+.travis.yml
+.vscode
 hooks*
 Makefile
+docker-compose.yml
+venv*
+
