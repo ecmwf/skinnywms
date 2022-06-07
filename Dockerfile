@@ -1,6 +1,6 @@
 # Build image
 # Use slim python 3 image as base
-ARG PYTHON_IMAGE=python:3.6-slim-buster
+ARG PYTHON_IMAGE=python:3.8-slim-buster
 FROM ${PYTHON_IMAGE}
 
 # Install UWSGI
