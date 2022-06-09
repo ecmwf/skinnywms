@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod # see https://www.python.org/dev/peps/pep-05
 # does it submit to any jurisdiction.
 
 import datetime
+from dateutil import parser
 import logging
 from skinnywms.server import WMSServer
 from skinnywms import errors
@@ -455,7 +456,10 @@ class DataLayer(Layer):
             time = self._first.time
         else:
             # parse string date
-            time = datetime.datetime.strptime(time[:19], "%Y-%m-%dT%H:%M:%S")
+            try:
+                time = datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+            except:
+                time = parser.parse(str(time)[:19])
 
         if elevation is None:
             elevation = [i[1] for i in self._fields.keys() if i[0] == time].pop(0)
