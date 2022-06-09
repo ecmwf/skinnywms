@@ -74,7 +74,7 @@ class GRIBField(datatypes.Field):
             if self.companion is None:
                 # if we didn't manage to match up this field with another one
                 # we'll keep it for later
-                if self.shortName not in possible_matches: 
+                if self.shortName not in possible_matches:
                     possible_matches[self.shortName] = [self]
                 else:
                     # there could be multiple fields with same name (shortName)
@@ -84,7 +84,7 @@ class GRIBField(datatypes.Field):
                     possible_matches[self.shortName].append(self)
 
         key = "style.grib.%s" % (self.name,)
-        
+
         # Optimisation
         self.styles = context.stash.get(key)
         if self.styles is None:
@@ -135,7 +135,7 @@ class GRIBField(datatypes.Field):
             return False
         if self.levtype != other.levtype:
             return False
-        if self.levelist != other.levelist: 
+        if self.levelist != other.levelist:
             return False
         return True
 
@@ -221,13 +221,13 @@ class GRIBField(datatypes.Field):
         data.append(context.styler.contours(self, driver, style, legend))
 
         return data
-    
+
     def render_wind(self, context, driver, style, legend={}) -> list:
         data = []
 
         params = dict(
-            grib_input_file_name = self.path, 
-            grib_wind_position_1 = self.ucomponent.byte_offset, 
+            grib_input_file_name = self.path,
+            grib_wind_position_1 = self.ucomponent.byte_offset,
             grib_wind_position_2 = self.vcomponent.byte_offset,
             grib_file_address_mode="byte_offset"
         )
