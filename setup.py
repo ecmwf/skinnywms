@@ -54,6 +54,7 @@ setuptools.setup(
         "Flask",
         "xarray",
         "future-annotations", # A backport of __future__ annotations to python<3.7
+        "python-dateutil",
     ],
     entry_points={
         "console_scripts": ["skinny-wms=skinnywms.skinny:main"],
