@@ -2,9 +2,14 @@
 The skinny WMS is a small WMS server that will help you to visualise your NetCDF and Grib Data.
 The principle is simple: skinny will browse the directory, or the single file passed as argument, and try to interpret each NetCDF or GRIB files. From the metadata, it will be built the getCapabilities document, and find a relevant style to plot the data.
 
-[![build](https://img.shields.io/travis/ecmwf/skinnywms/master.svg)](https://travis-ci.org/ecmwf/skinnywms/branches)
-[![Docker Build Status](https://img.shields.io/docker/cloud/build/ecmwf/skinnywms.svg)](https://hub.docker.com/r/ecmwf/skinnywms)
-[![Docker Pulls](https://img.shields.io/docker/pulls/ecmwf/skinnywms)](https://hub.docker.com/r/ecmwf/skinnywms)[![PyPI version](https://badge.fury.io/py/skinnywms.svg)](https://badge.fury.io/py/skinnywms) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/skinnywms/badges/version.svg)](https://anaconda.org/conda-forge/skinnywms) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/skinnywms/badges/downloads.svg)](https://anaconda.org/conda-forge/skinnywms)
+[![Docs](https://img.shields.io/readthedocs/skinnywms?label=read%20the%20docs)](https://skinnywms.readthedocs.io)
+[![Upload Python Package](https://github.com/ecmwf/skinnywms/actions/workflows/python-publish.yml/badge.svg)](https://github.com/ecmwf/skinnywms/actions)
+[![PyPI version](https://badge.fury.io/py/skinnywms.svg)](https://badge.fury.io/py/skinnywms)
+[![Upload Python Package](https://github.com/ecmwf/skinnywms/actions/workflows/docker-release.yml/badge.svg)](https://github.com/ecmwf/skinnywms/actions)
+[![Docker Pulls](https://img.shields.io/docker/pulls/ecmwf/skinnywms)](https://hub.docker.com/r/ecmwf/skinnywms)
+[![Anaconda Version](https://anaconda.org/conda-forge/skinnywms/badges/version.svg)](https://anaconda.org/conda-forge/skinnywms)
+[![Anaconda Downloads](https://anaconda.org/conda-forge/skinnywms/badges/downloads.svg)](https://anaconda.org/conda-forge/skinnywms)
+[![License](https://img.shields.io/github/license/ecmwf/skinnywms)](https://github.com/ecmwf/skinnywms)
 
 
 Features:
@@ -106,8 +111,8 @@ grib_copy input_wind_u_component.grb2 input_wind_v_component.grib2 output_wind_u
 - development stage: **Alpha**,
 
 
-Add your own styles:
---------------------
+Add your own styles
+-------------------
 
 Multi-process
 -------------
@@ -117,11 +122,10 @@ Cache
 
 
 How to install Magics
------------------------
+---------------------
 
 that must be installed on the system and accessible as a shared library.
 Some Linux distributions ship a binary version that may be installed with the standard package manager.
-
 
 As an alternative you may install the official source distribution
 by following the instructions at
@@ -129,6 +133,12 @@ https://software.ecmwf.int/magics/Installation+Guide
 Magics is available on github https://github.com/ecmwf/magics
 
 Note that *Magics* support for the Windows operating system is experimental.
+
+Alternatively you can use the [ecmwflibs package](https://github.com/ecmwf/ecmwflibs/) (currently in **Alpha** development stage) to install magics and eccodes libraries:
+```
+pip install ecmwflibs
+```
+
 
 
 Start up a local development environment (Docker)
@@ -144,21 +154,21 @@ This will build a dev image and start up a local flask development server (with 
 Contributing
 ------------
 
-The main repository is hosted on GitHub,
-testing, bug reports and contributions are highly welcomed and appreciated:
+The main repository, as well as related projects are hosted on GitHub.
+Testing, bug reports and contributions to all our projects are highly welcomed and appreciated:
 
-https://github.com/ecmwf/skinnywms
-https://github.com/ecmwf/magics-python
-https://github.com/ecmwf/magics
+- https://github.com/ecmwf/skinnywms
+- https://github.com/ecmwf/magics-python
+- https://github.com/ecmwf/magics
+- https://github.com/ecmwf/eccodes
+- https://github.com/ecmwf/ecmwflibs
 
-
-Please see the CONTRIBUTING.rst document for the best way to help.
 
 Lead developers:
 
 - `Sylvie Lamy-Thepaut <https://github.com/sylvielamythepaut>`_ - ECMWF
 - `Baudouin Raoult <https://github.com/b8raoult>` - ECMWF
-- `Eduard Rosert <https://github.com/eduardRosert>` - ECMWF
+- `Eduard Rosert <https://github.com/EduardRosert>` - ECMWF
 
 Main contributors:
 
