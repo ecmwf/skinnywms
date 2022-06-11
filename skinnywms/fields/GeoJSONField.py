@@ -6,10 +6,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+from pprint import pprint
+from typing import Any, Dict, List
 from skinnywms import datatypes
+from dateutil import parser
 import logging
 import os
 import datetime
+import geojson
+
+from skinnywms.server import WMSServer
 
 
 
@@ -17,20 +23,21 @@ class GeoJSONField(datatypes.Field):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context, path):
+    def __init__(self, context:WMSServer, path:str, featureCollection:geojson.FeatureCollection, name:str,time:str):
 
         self.path = path
         
-        self.time = datetime.datetime.now()
+        self.time = parser.parse(time) #datetime.datetime.now()
         self.levelist = None
-        name = os.path.basename(path)
-        self.name, ext = os.path.splitext(name)
+        #name = os.path.basename(path)
+        #self.name, ext = os.path.splitext(name)
+        self.name = name
         self.title = self.name
         self.styles=["symbol"]
 
     
 
-    def render(self, context, driver, style, legend={}):
+    def render(self, context:WMSServer, driver, style, legend={}):
         data = []
 
         data.append(driver.mgeojson(geojson_input_filename = self.path))
@@ -51,25 +58,131 @@ class GeoJSONField(datatypes.Field):
         )
 
     def __repr__(self):
-        return "GRIBField[%r,%r,%r]" % (self.path, self.index, self.mars)
+        return "GeoJSONField[%r,%r,%r]" % (self.path, self.name, self.time)
 
 
-class GeoJSONReader:
+class GeoJSONReader(datatypes.FieldReader):
 
-    """Get WMS layers from a GRIB file."""
+    """Get WMS layers from a GeoJSON file."""
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context, path):
-        self.path = path
-        self.context = context
+    SUPPORTED_TYPES = { "Feature", "FeatureCollection"}
+    SUPPORTED_GEOMETRIES = { "Point" }
+    REQUIRED_FIELDS = {"geometry", "type", "properties"}
+    REQUIRED_PROPERTIES = {"time"}
+    SUPPORTED_PROPERTIES = {
+        "air_temperature",
+        "wind_to_direction",
+        "wind_speed",
+        "precipitation_amount",
+        "ww",
+        "time",
+    }
 
-    def get_fields(self):
-        self.log.info("Scanning file: %s", self.path)
-        print("Scanning file: %s", self.path)
+    def __init__(self, context:WMSServer, path:str):
+        super(GeoJSONReader,self).__init__(context=context, path=path)
 
-        fields = [ GeoJSONField(self.context, self.path) ]
+    def build_features(point:geojson.Point, properties:Dict[str,Any] ) -> List[geojson.Feature]:
+        features:List[geojson.Feature] = []
+        time:str = None
+        name:str = None
+        if "time" not in properties.keys():
+            GeoJSONReader.log.error("'time' field missing in timeseries property, skipping...")
+        else:
+            time = properties["time"]
 
+        if "name" in properties.keys():
+            name = properties["name"]
         
+        for item_name,item_value in properties.items():
+            if item_name == "time":
+                continue
+            elif item_name in GeoJSONReader.SUPPORTED_PROPERTIES:
+                prop = { 
+                    "time" : time,
+                    "name" : name, # station name
+                    item_name : item_value,
+                }
+                features.append(
+                    geojson.Feature(geometry=point, properties=prop)
+                )
+        return features
+
+    def extract_features(feature:Dict[str,Any]) -> List[geojson.Feature]:
+        features:List[geojson.Feature] = []
+        props = set(feature.keys())
+        diff = GeoJSONReader.REQUIRED_FIELDS.difference(props)
+        if len(diff) > 0:
+            GeoJSONReader.log.error("Missing Feature properties: ", diff)
+            return
+        if feature["type"] != "Feature":
+            GeoJSONReader.log.error("Unsupported feature type", feature["type"])
+            return
+        
+        point = geojson.Point(coordinates=feature["geometry"]["coordinates"])
+
+        if "timeseries" in feature["properties"]:
+            timeseries:List[Dict[str,Any]] = feature["properties"]["timeseries"]
+            for ts_props in timeseries:
+                features.extend(GeoJSONReader.build_features(point=point,properties=ts_props))
+        else:
+            # not a timeseries, but a value for a single time step
+            features.extend(GeoJSONReader.build_features(point=point, properties=feature["properties"]))
+
+        return features
+
+    def get_fields(self) -> list:
+        self.log.info("Scanning file:", self.path)
+        print("Scanning file:", self.path)
+
+        feature_collection:geojson.FeatureCollection = None
+        features:List[geojson.Feature] = []
+        with open(self.path) as file:
+            content = geojson.load(file)
+            content:Dict[str,Any]
+            if "type" in content.keys():
+                if content["type"] == "FeatureCollection":
+                    print("FeatureCollection found!")
+                    for ft in content["features"]:
+                        features.extend(
+                            GeoJSONReader.extract_features(ft)
+                        )
+                elif content["type"] == "Feature":
+                    print("Feature found!")
+                    features.extend( 
+                        GeoJSONReader.extract_features(feature=content)
+                    )
+                else:
+                    self.log.error("Unsupported type:", content["type"])
+                    return []
+            else:
+                self.log.error("GeoJSON 'type' not found. Skipping file.")
+                return []
+        #pprint(features)
+
+        feature_collection = geojson.FeatureCollection(features=features)
+
+        features_by_field:Dict[str,Dict[str,List[geojson.Feature]]] = {}
+        skip_fields = {"time", "name"}
+        for feature in features:
+            field_name = set(feature["properties"].keys()).difference(skip_fields).pop()
+            time = feature["properties"]["time"]
+
+            if field_name not in features_by_field.keys():
+                features_by_field[field_name] = {}
+            
+            if time not in features_by_field[field_name].keys():
+                features_by_field[field_name][time] = []
+            
+            features_by_field[field_name][time].append(feature)
+        pprint(features_by_field)
+
+        fields = []
+
+        for field_name, field_value in features_by_field.items():
+            for time, time_collection in field_value.items():
+                fields.append(GeoJSONField(self.context, self.path, featureCollection=time_collection, name=field_name, time=time))
+        #fields = [  ]
 
         return fields

@@ -53,6 +53,7 @@ setuptools.setup(
         "Magics",
         "Flask",
         "xarray",
+        "geojson",
         "future-annotations", # A backport of __future__ annotations to python<3.7
         "python-dateutil",
     ],
