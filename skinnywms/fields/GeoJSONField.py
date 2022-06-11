@@ -22,10 +22,10 @@ class GeoJSONField(datatypes.Field):
         self.path = path
         
         self.time = datetime.datetime.now()
+        self.levelist = None
         name = os.path.basename(path)
         self.name, ext = os.path.splitext(name)
         self.title = self.name
-
         self.styles=["symbol"]
 
     
