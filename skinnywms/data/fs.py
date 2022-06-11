@@ -92,16 +92,14 @@ EXTENSIONS:Dict[str,datatypes.FieldReader] = {
 
 def _reader(context:WMSServer, path:str) -> datatypes.FieldReader: # GRIBReader | NetCDFReader
 
-    print("FOUND-->", path)
     with open(path, "rb") as f:
         header = f.read(4)
 
     if header in READERS:
         return READERS[header](context, path)
 
-    # Now we try the extension to try to detect a geosson file
+    # Now we try the extension to try to detect a geojson file
     filename, extension = os.path.splitext(path)
-    print("FOUND-->", extension)
     if extension in EXTENSIONS:
         return EXTENSIONS[extension](context, path)
 
