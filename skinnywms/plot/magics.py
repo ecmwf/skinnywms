@@ -587,6 +587,7 @@ class Styler(datatypes.Styler):
             contour_automatic_setting="style_name",
             contour_style_name=style.name,
         )
+<<<<<<< Updated upstream
 
     def winds(self, field, driver, style, legend={}):
 
@@ -599,3 +600,15 @@ class Styler(datatypes.Styler):
             wind_automatic_setting="style_name",
             wind_style_name=style.name,
         )
+=======
+    
+    def symbol(self, field, driver, style, legend={}):
+        
+        return driver.msymb(symbol_type = "marker",
+            symbol_marker_index = 15,
+            legend = "off",
+            symbol_colour = "red",
+            symbol_height = 1.00)
+
+        
+>>>>>>> Stashed changes
