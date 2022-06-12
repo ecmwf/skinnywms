@@ -33,7 +33,7 @@ class GeoJSONField(datatypes.Field):
         #self.name, ext = os.path.splitext(name)
         self.name = name
         self.title = self.name
-        self.styles=["symbol"]
+        self.styles=[self.name]
 
     
 
@@ -43,11 +43,19 @@ class GeoJSONField(datatypes.Field):
         geojsonstring = geojson.dumps(self.featureCollection)
         #pprint(geojsonstring)
 
-        data.append(driver.mgeojson(
+        if self.name == "mosmix" :
+            data.append(driver.mgeojson(
             geojson_input_type = "string",
             geojson_input = geojsonstring
             )
         )
+        else : 
+            data.append(driver.mgeojson(
+                geojson_input_type = "string",
+                geojson_input = geojsonstring,
+                geojson_value_property = self.name
+                )
+            )
         data.append(
             context.styler.symbol(self, driver, style, legend)
         )
