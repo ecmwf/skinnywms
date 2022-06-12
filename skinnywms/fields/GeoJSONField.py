@@ -29,8 +29,6 @@ class GeoJSONField(datatypes.Field):
         self.featureCollection = featureCollection
         self.time = parser.parse(time) #datetime.datetime.now()
         self.levelist = None
-        #name = os.path.basename(path)
-        #self.name, ext = os.path.splitext(name)
         self.name = name
         self.title = self.name
         self.styles=[self.name]
@@ -41,7 +39,7 @@ class GeoJSONField(datatypes.Field):
         data = []
 
         geojsonstring = geojson.dumps(self.featureCollection)
-        #pprint(geojsonstring)
+        pprint(geojsonstring)
 
         if self.name == "mosmix" :
             data.append(driver.mgeojson(
@@ -104,17 +102,16 @@ class GeoJSONReader(datatypes.FieldReader):
     def __init__(self, context:WMSServer, path:str):
         super(GeoJSONReader,self).__init__(context=context, path=path)
 
-    def build_features(point:geojson.Point, properties:Dict[str,Any], split_properties:bool=True) -> List[geojson.Feature]:
+    def build_features(point:geojson.Point, properties:Dict[str,Any], split_properties:bool=True, name:str="") -> List[geojson.Feature]:
         features:List[geojson.Feature] = []
         time:str = None
-        name:str = None
         if "time" not in properties.keys():
             GeoJSONReader.log.error("'time' field missing in timeseries property, skipping...")
         else:
             time = properties["time"]
 
-        if "name" in properties.keys():
-            name = properties["name"]
+        # if "name" in properties.keys():
+        #     name = properties["name"]
         
         if split_properties:
             for item_name,item_value in properties.items():
@@ -136,6 +133,8 @@ class GeoJSONReader(datatypes.FieldReader):
             for item_name,item_value in properties.items():
                 if item_name in GeoJSONReader.SUPPORTED_PROPERTIES:
                     filtered_props[item_name] = item_value
+            
+            filtered_props["name"] = name
             features.append(
                 geojson.Feature(geometry=point, properties=filtered_props)
             )
@@ -154,14 +153,19 @@ class GeoJSONReader(datatypes.FieldReader):
         
         point = geojson.Point(coordinates=feature["geometry"]["coordinates"])
 
-        if "timeseries" in feature["properties"]:
+        name = ""
+        if "name" in feature["properties"].keys():
+            name = feature["properties"]["name"]
+
+        if "timeseries" in feature["properties"].keys():
             timeseries:List[Dict[str,Any]] = feature["properties"]["timeseries"]
             for ts_props in timeseries:
                 features.extend(
                     GeoJSONReader.build_features(
                         point=point,
                         properties=ts_props, 
-                        split_properties=split_properties
+                        split_properties=split_properties,
+                        name=name
                     )
                 )
         else:
@@ -170,7 +174,8 @@ class GeoJSONReader(datatypes.FieldReader):
                 GeoJSONReader.build_features(
                     point=point, 
                     properties=feature["properties"], 
-                    split_properties=split_properties
+                    split_properties=split_properties,
+                    name=name
                 )
             )
 
