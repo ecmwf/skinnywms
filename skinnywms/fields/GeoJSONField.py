@@ -26,7 +26,7 @@ class GeoJSONField(datatypes.Field):
     def __init__(self, context:WMSServer, path:str, featureCollection:geojson.FeatureCollection, name:str,time:str):
 
         self.path = path
-        
+        self.featureCollection = featureCollection
         self.time = parser.parse(time) #datetime.datetime.now()
         self.levelist = None
         #name = os.path.basename(path)
@@ -40,8 +40,17 @@ class GeoJSONField(datatypes.Field):
     def render(self, context:WMSServer, driver, style, legend={}):
         data = []
 
-        data.append(driver.mgeojson(geojson_input_filename = self.path))
-        data.append(context.styler.symbol(self, driver, style, legend))
+        geojsonstring = geojson.dumps(self.featureCollection)
+        #pprint(geojsonstring)
+
+        data.append(driver.mgeojson(
+            geojson_input_type = "string",
+            geojson_input = geojsonstring
+            )
+        )
+        data.append(
+            context.styler.symbol(self, driver, style, legend)
+        )
 
         return data
 
@@ -72,12 +81,16 @@ class GeoJSONReader(datatypes.FieldReader):
     REQUIRED_FIELDS = {"geometry", "type", "properties"}
     REQUIRED_PROPERTIES = {"time"}
     SUPPORTED_PROPERTIES = {
+        "time",
+        "name",
         "air_temperature",
         "wind_to_direction",
         "wind_speed",
         "precipitation_amount",
-        "ww",
-        "time",
+        "thunderstorm_probability",
+        "surface_air_pressure_reduced",
+        "cloud_area_fraction",
+        "present_weather",
     }
 
     def __init__(self, context:WMSServer, path:str):
@@ -96,6 +109,7 @@ class GeoJSONReader(datatypes.FieldReader):
             name = properties["name"]
         
         for item_name,item_value in properties.items():
+            item_name = item_name.lower()
             if item_name == "time":
                 continue
             elif item_name in GeoJSONReader.SUPPORTED_PROPERTIES:
@@ -159,30 +173,40 @@ class GeoJSONReader(datatypes.FieldReader):
             else:
                 self.log.error("GeoJSON 'type' not found. Skipping file.")
                 return []
-        #pprint(features)
-
-        feature_collection = geojson.FeatureCollection(features=features)
 
         features_by_field:Dict[str,Dict[str,List[geojson.Feature]]] = {}
+        features_by_time:Dict[str,List[geojson.Feature]] = {}
         skip_fields = {"time", "name"}
         for feature in features:
             field_name = set(feature["properties"].keys()).difference(skip_fields).pop()
             time = feature["properties"]["time"]
 
+            # feature by field
             if field_name not in features_by_field.keys():
                 features_by_field[field_name] = {}
             
             if time not in features_by_field[field_name].keys():
                 features_by_field[field_name][time] = []
-            
+
             features_by_field[field_name][time].append(feature)
-        pprint(features_by_field)
+
+            # features by time
+            if time not in features_by_time.keys():
+                features_by_time[time] = []
+            features_by_time[time].append(feature)
+
+        #pprint(features_by_field)
 
         fields = []
 
         for field_name, field_value in features_by_field.items():
             for time, time_collection in field_value.items():
-                fields.append(GeoJSONField(self.context, self.path, featureCollection=time_collection, name=field_name, time=time))
-        #fields = [  ]
+                feature_collection = geojson.FeatureCollection(features=time_collection)
+                fields.append(GeoJSONField(self.context, self.path, featureCollection=feature_collection, name=field_name, time=time))
 
+        # extract layer name from file name
+        name = os.path.basename(self.path)
+        layer_name, ext = os.path.splitext(name) 
+        for time, feature_collection in features_by_time.items():
+            fields.append(GeoJSONField(self.context, self.path, featureCollection=feature_collection, name=layer_name, time=time))
         return fields
