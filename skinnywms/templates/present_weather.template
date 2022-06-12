@@ -1,5 +1,5 @@
 <observations>
-	<obs_template type='hackathon' rows='3' columns='3'>
+	<obs_template type='present_weather' rows='3' columns='3'>
      	<obs_present_weather  row='0' column='0'/>   
         <obs_identifier row='1' column='0'/>    
  	</obs_template>
