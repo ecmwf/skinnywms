@@ -88,7 +88,14 @@ class StaticLayer(datatypes.Layer):
     def render(self, context, driver, style):
         return [
             driver.mcoast(
-                map_coastline_general_style=self.name, map_coastline_resolution="medium"
+                 map_coastline_colour            = "RGB(0.8,0.8,0.8,0.5)",
+    map_coastline_resolution        = "medium",
+    map_coastline_thickness         = 1,
+    map_coastline_land_shade        = "on",
+    map_coastline_land_shade_colour = "RGB(0.25,0.25,0.25)",
+    map_coastline_sea_shade         = "on",
+    map_coastline_sea_shade_colour  = "black",
+    map_grid                        = "off"
             )
         ]
 
@@ -603,12 +610,90 @@ class Styler(datatypes.Styler):
 
     
     def symbol(self, field, driver, style, legend={}):
+
+        print ( "FILE-> ", style)
+        styles = {
+            "cloud_area_fraction" : driver.msymb(
+                symbol_advanced_table_height_method = "calculate",
+                symbol_advanced_table_height_min_value = 0.8,
+                symbol_advanced_table_height_max_value = 0.8,
+                symbol_type = "marker",
+                legend = "on",
+                symbol_table_mode = "advanced",
+                symbol_marker_mode = "name",
+                symbol_advanced_table_selection_type = "list",
+                symbol_advanced_table_colour_method = "list",
+                symbol_advanced_table_colour_list = ["#26001a",
+                            "#1d008a",
+                            "#113300",
+                            "#92003b",
+                            "#ff6e8f",
+                            "#e4bc00",
+                            "#ffb8e0",
+                            "#03fbec",
+                            "#b0ff95",
+                            "#e4f9ff"],
+                symbol_advanced_table_level_list = [0.0,0.1,12.5,25,37.5,50.0,62.5,75.0,87.5,100],
+                symbol_advanced_table_marker_name_list = ['N_0','N_1','N_2','N_3','N_4',
+                'N_5','N_6','N_7','N_8','N_9'],), 
+            "present_weather" : driver.mobs(
+                obs_template_file_name=os.getcwd() + "/skinnywms/templates/present_weather.template",
+                obs_size=0.6,
+                obs_ring_size=0.2,
+                obs_distance_apart=0.0,
+                obs_present_weather_colour = "white"
+            ),
+            "mosmix" : driver.mobs(
+                obs_template_file_name=os.getcwd() + "/skinnywms/templates/mosmix.template",
+                obs_size=0.4,
+                obs_ring_size=0.2,
+                obs_distance_apart=0.0,
+                obs_present_weather_colour = "white",
+                obs_identification_colour = "white",
+                obs_station_ring_colour = "white",
+            ),
+            "thunderstorm_probability" : driver.msymb(
+                legend = "on",
+                symbol_type = "marker",
+                symbol_table_mode = "advanced",
+                symbol_advanced_table_selection_type = "interval",
+                symbol_advanced_table_interval = 10.,
+                symbol_advanced_table_colour_method = "list",
+                symbol_advanced_table_colour_list = ["RGB(0.7898,0.5906,0.6304)", "RGB(0.37,0.04564,0.1105)", "RGB(0.6481,0.02644,0.1404)",
+                "RGB(0.9942,0.02538,0.1384)", "RGB(0.9942,0.4408,0.01758)", "RGB(0.9902,0.6293,0.005859)",
+                "RGB(0.9961,0.8479,0.007828)", "RGB(0.9961,0.9796,0.007828)", "#ffff99"],
+                symbol_advanced_table_height_method = "list",
+                symbol_advanced_table_height_list = [0.2,0.4,0.6,0.8,1,1.2,1.4,1.6,1.8],
+                symbol_marker_index = 15 ),
+            "air_temperature": driver.msymb(legend = "off",
+                        symbol_type = "marker",
+                        symbol_table_mode = "advanced",
+                        symbol_advanced_table_selection_type = "interval",
+                        symbol_advanced_table_interval = 0.1,
+                        symbol_advanced_table_min_level_colour = "lavender",
+                        symbol_advanced_table_max_level_colour = "violet",
+                        symbol_advanced_table_colour_direction = "clockwise",
+                        symbol_advanced_table_height_method = "calculate",
+                        symbol_advanced_table_height_min_value = 3.,
+                        symbol_advanced_table_height_max_value = 3.,
+                        symbol_marker_mode = "name",
+                        symbol_advanced_table_marker_name_list = ["duck"])
         
-        return driver.msymb(symbol_type = "marker",
-            symbol_marker_index = 15,
-            legend = "off",
-            symbol_colour = "red",
-            symbol_height = 1.00)
+            }
+        
+        return styles.get(style, driver.msymb(legend = "off",
+                        symbol_type = "marker",
+                        symbol_table_mode = "advanced",
+                        symbol_advanced_table_selection_type = "interval",
+                        symbol_advanced_table_interval = 0.1,
+                        symbol_advanced_table_min_level_colour = "lavender",
+                        symbol_advanced_table_max_level_colour = "violet",
+                        symbol_advanced_table_colour_direction = "clockwise",
+                        symbol_advanced_table_height_method = "calculate",
+                        symbol_advanced_table_height_min_value = 0.5,
+                        symbol_advanced_table_height_max_value = 0.5,
+                        symbol_marker_index = 15))
+
 
         
 

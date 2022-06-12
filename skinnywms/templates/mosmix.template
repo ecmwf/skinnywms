@@ -1,0 +1,6 @@
+<observations>
+	<obs_template type='hackathon' rows='3' columns='3'>
+     	<obs_station_ring  row='0' column='0'/>   
+		<obs_identification  row='-1' column='-1'/> 
+ 	</obs_template>
+</observations>
