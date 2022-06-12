@@ -39,7 +39,7 @@ class GeoJSONField(datatypes.Field):
         data = []
 
         geojsonstring = geojson.dumps(self.featureCollection)
-        pprint(geojsonstring)
+        #pprint(geojsonstring)
 
         if self.name == "mosmix" :
             data.append(driver.mgeojson(
