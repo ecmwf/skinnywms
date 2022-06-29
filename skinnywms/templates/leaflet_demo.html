@@ -29,6 +29,24 @@
     }
   </style>
   <script>
+      /* patch for leaflet time dimension bug, see https://github.com/socib/Leaflet.TimeDimension/issues/139 */
+      let parseTimeDimensionFromCapabilitiesFix =  function(xml) {
+        var layers = xml.querySelectorAll('Layer');
+
+        var layerName = this._baseLayer.wmsParams.layers;
+        var layer = null, times = null;
+        layers.forEach(function(current) {
+            if (current.querySelector("Name").innerHTML === layerName) 
+                layer = current;
+        })
+        if (layer) {
+            times = this._getTimesFromLayerCapabilities(layer);
+            if (!times)
+                times = this._getTimesFromLayerCapabilities(layer.parentNode);
+        }
+        return times;
+      }
+
       let mymap = L.map('mapid', {
           center: [0, 0],
           zoom: 2,
@@ -44,7 +62,7 @@
           version: '1.3.0'
       }).addTo(mymap);
 
-      fetch('/wms').then(function(response) {
+      fetch('/wms?request=GetCapabilities&service=WMS&version=1.3.0').then(function(response) {
           return response.text();
       }).then(function(text) {
           let layers = {}
@@ -68,6 +86,8 @@
                   updateTimeDimensionMode: "union",
                   requestTimeFromCapabilities: true,
               });
+              // fix the time dimesion parsing
+              layers[title]._parseTimeDimensionFromCapabilities = parseTimeDimensionFromCapabilitiesFix;
 
               let legendControl = L.control({
                   position: 'bottomright'
