@@ -12,6 +12,7 @@ import os
 import threading
 import pprint
 import json
+from typing import Dict, Generator
 
 from numpy.lib.utils import deprecate
 
@@ -23,7 +24,7 @@ from skinnywms.grib_bindings.GribField import GribField
 
 
 __all__ = [
-    "Plotter",
+    "MagicsPlotter",
 ]
 
 
@@ -153,11 +154,45 @@ class MagicsWebStyle(datatypes.Style):
     pass
 
 
-class Plotter(datatypes.Plotter):
+class MagpyePlotter(datatypes.Plotter):
+
+    def layers(self):
+        raise NotImplementedError
+
+    @property
+    def supported_crss(self):
+        raise NotImplementedError
+
+    @property
+    def geographic_bounding_box(self):
+        raise NotImplementedError
+
+    def plot(
+        self,
+        context,
+        output,
+        bbox,
+        crs,
+        format,
+        height,
+        layers,
+        styles,
+        version,
+        width,
+        transparent,
+        _macro=False,
+        bgcolor=None,
+        elevation=None,
+        exceptions=None,
+        time=None,
+    ):
+        raise NotImplementedError
+
+class MagicsPlotter(datatypes.Plotter):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, baselayer=None, styles=None, driver=macro):
+    def __init__(self, baselayer:str=None, styles:Dict[str,str]=None, driver=macro):
         self.driver = driver
 
         self.wmscrs = driver.wmscrs()
@@ -197,11 +232,11 @@ class Plotter(datatypes.Plotter):
     def geographic_bounding_box(self):
         return self.wmscrs["geographic_bounding_box"]
 
-    def layers(self):
+    def layers(self) -> Generator[datatypes.Layer, None, None]:
         for layer in self._layers.values():
             yield layer
 
-    def layer(self, name, time=None):
+    def layer(self, name, time=None) -> datatypes.Layer:
         try:
             return self._layers[name]
         except KeyError:
