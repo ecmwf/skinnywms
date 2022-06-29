@@ -12,7 +12,7 @@ import argparse
 from flask import Flask, request, Response, render_template, send_file, jsonify
 
 from .server import WMSServer
-from .plot.magics import Plotter, Styler
+from .plot.magics import MagicsPlotter, Styler
 from .data.fs import Availability
 
 
@@ -74,7 +74,7 @@ group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
 
 server = WMSServer(
     Availability(args.path, group_dimensions=group_dimensions), 
-    Plotter(args.baselayer), 
+    MagicsPlotter(args.baselayer), 
     Styler(args.user_style)
 )
 
