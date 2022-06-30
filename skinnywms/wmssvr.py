@@ -9,14 +9,14 @@
 import os
 import argparse
 
-from flask import Flask, request, Response, render_template, send_file, jsonify
+from flask import Flask, request, Response, render_template, send_file, jsonify, send_from_directory
 
 from .server import WMSServer
 from .plot.magics import Plotter, Styler
 from .data.fs import Availability
 
 
-application = Flask(__name__)
+application = Flask(__name__, static_url_path='/static')
 
 demo = os.path.join(os.path.dirname(__file__), "testdata", "sfc.grib")
 
