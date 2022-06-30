@@ -46,6 +46,15 @@
     #mapid {
       height: 100%;
     }
+    .leaflet-html-legend {
+      width: auto;
+      max-width: 50%;
+      min-width: 250px;
+    }
+    div.legend img {
+      width: 100%;
+      background-color: gray;
+    }
   </style>
   <script>
       /* patch for leaflet time dimension bug, see https://github.com/socib/Leaflet.TimeDimension/issues/139 */
@@ -109,27 +118,51 @@
               layers[title]._parseTimeDimensionFromCapabilities = parseTimeDimensionFromCapabilitiesFix;
 
 
-              let legendControl = L.control({
-                  position: 'bottomright'
+              // let legendControl = L.control({
+              //     position: 'bottomright'
+              // });
+              // if (legendurl) {
+              //   legendControl.onAdd = function(map) {
+              //       var div = L.DomUtil.create('div', 'info legend');
+              //       div.innerHTML += '<img src="' + legendurl + '"/>';
+              //       return div;
+              //   };
+              // }
+              // legends[title] = legendControl;
+
+              if (legendurl){
+                let legendControl = L.control.htmllegend({
+                  position: 'bottomright',
+                  legends: [{
+                      name: title + " (" + name + ")",
+                      elements: [{
+                          label: "&nbsp;",
+                          html: '<div class="legend"><img src="' + legendurl + '"/></div>' //document.querySelector('#Pentagon').innerHTML
+                      }]
+                  }],
+                  defaultOpacity: 0.8,
+                  collapseSimple: true,
+                  collapsedOnInit: true,
+                  detectStretched: true
               });
-              if (legendurl) {
-                legendControl.onAdd = function(map) {
-                    var div = L.DomUtil.create('div', 'info legend');
-                    div.innerHTML += '<img src="' + legendurl + '"/>';
-                    return div;
-                };
-              }
+
               legends[title] = legendControl;
+            }
+
           });
           let baseMaps = {
               "background": background,
           };
           L.control.layers(baseMaps, layers).addTo(mymap);
           mymap.on('overlayadd', function(eventLayer) {
-              legends[eventLayer.name].addTo(this);
+              if (legends[eventLayer.name]){
+                legends[eventLayer.name].addTo(this);
+              }
           });
           mymap.on('overlayremove', function(eventLayer) {
-              this.removeControl(legends[eventLayer.name]);
+            if (legends[eventLayer.name]){
+                this.removeControl(legends[eventLayer.name]);
+              }
           });
       });
 
