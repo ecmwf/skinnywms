@@ -41,19 +41,13 @@ class GeoJSONField(datatypes.Field):
         geojsonstring = geojson.dumps(self.featureCollection)
         #pprint(geojsonstring)
 
-        if self.name == "mosmix" :
-            data.append(driver.mgeojson(
+        
+        data.append(driver.mgeojson(
             geojson_input_type = "string",
-            geojson_input = geojsonstring
-            )
-        )
-        else : 
-            data.append(driver.mgeojson(
-                geojson_input_type = "string",
-                geojson_input = geojsonstring,
-                geojson_value_property = self.name
-                )
-            )
+            geojson_input = geojsonstring,
+            geojson_value_property = self.name
+        ))
+        
         data.append(
             context.styler.symbol(self, driver, style, legend)
         )
@@ -249,9 +243,9 @@ class GeoJSONReader(datatypes.FieldReader):
                 fields.append(GeoJSONField(self.context, self.path, featureCollection=feature_collection, name=field_name, time=time))
 
         # extract layer name from file name
-        name = os.path.basename(self.path)
-        layer_name, ext = os.path.splitext(name) 
-        for time, time_collection in features_by_time.items():
-            feature_collection = geojson.FeatureCollection(features=time_collection)
-            fields.append(GeoJSONField(self.context, self.path, featureCollection=feature_collection, name=layer_name, time=time))
+        # name = os.path.basename(self.path)
+        # layer_name, ext = os.path.splitext(name) 
+        # for time, time_collection in features_by_time.items():
+        #     feature_collection = geojson.FeatureCollection(features=time_collection)
+        #     fields.append(GeoJSONField(self.context, self.path, featureCollection=feature_collection, name=layer_name, time=time))
         return fields
