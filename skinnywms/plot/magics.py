@@ -637,14 +637,14 @@ class Styler(datatypes.Styler):
                 symbol_advanced_table_marker_name_list = ['N_0','N_1','N_2','N_3','N_4',
                 'N_5','N_6','N_7','N_8','N_9'],), 
             "present_weather" : driver.mobs(
-                obs_template_file_name=os.getcwd() + "/skinnywms/templates/mosmix.template",
+                obs_template_file_name=os.getcwd() + "/skinnywms/templates/obs.template",
                 obs_size=0.6,
                 obs_ring_size=0.2,
                 obs_distance_apart=1.0,
                 obs_present_weather_colour = "white"
             ),
-            "mosmix" : driver.mobs(
-                obs_template_file_name=os.getcwd() + "/skinnywms/templates/mosmix.template",
+            "station_model" : driver.mobs(
+                obs_template_file_name=os.getcwd() + "/skinnywms/templates/obs.template",
                 obs_size=0.4,
                 obs_ring_size=0.2,
                 obs_distance_apart=1.0,
