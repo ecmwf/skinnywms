@@ -14,7 +14,9 @@ from flask import Flask, request, Response, render_template, send_file, jsonify,
 from .server import WMSServer
 from .plot.magics import Plotter, Styler
 from .data.fs import Availability
+import logging
 
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "WARN"))
 
 application = Flask(__name__, static_url_path='/static')
 
