@@ -13,9 +13,6 @@ from skinnywms.fields.mvfield import MvField
 
 __all__ = ["MvAvailability"]
 
-logging.basicConfig(level=logging.DEBUG)
-
-
 class MvLayer(datatypes.Layer):
     def __init__(self, loader, name, title, zindex, conf):
         super().__init__(name, title, zindex)

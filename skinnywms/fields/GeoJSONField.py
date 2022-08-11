@@ -27,10 +27,12 @@ class GeoJSONField(datatypes.Field):
 
         self.path = path
         self.featureCollection = featureCollection
-        self.time = parser.parse(time) #datetime.datetime.now()
+        self.time = parser.parse(time).astimezone(tz = datetime.timezone.utc) #datetime.datetime.now()
         self.levelist = None
         self.name = name
         self.title = self.name
+        self.group_name = name
+        self.group_title = self.group_name
         self.styles=[self.name]
 
     
@@ -183,7 +185,6 @@ class GeoJSONReader(datatypes.FieldReader):
 
     def get_fields(self) -> list:
         self.log.info("Scanning file:", self.path)
-        print("Scanning file:", self.path)
 
         features:List[geojson.Feature] = []
         features_grouped:List[geojson.Feature] = []
@@ -192,7 +193,7 @@ class GeoJSONReader(datatypes.FieldReader):
             content:Dict[str,Any]
             if "type" in content.keys():
                 if content["type"] == "FeatureCollection":
-                    print("FeatureCollection found!")
+                    self.log.info("FeatureCollection found!")
                     for ft in content["features"]:
                         features.extend(
                             GeoJSONReader.extract_features(feature=ft)
@@ -201,7 +202,7 @@ class GeoJSONReader(datatypes.FieldReader):
                             GeoJSONReader.extract_features(feature=ft, split_properties=False)
                         )
                 elif content["type"] == "Feature":
-                    print("Feature found!")
+                    self.log.info("Feature found!")
                     features.extend( 
                         GeoJSONReader.extract_features(feature=content)
                     )

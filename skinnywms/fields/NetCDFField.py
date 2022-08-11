@@ -24,11 +24,11 @@ def as_datetime(self, time):
     # Otherwise we should use 'astype(datetime.datetime)'
     # https://stackoverflow.com/questions/29753060/how-to-convert-numpy-datetime64-into-datetime
 
-    # Lose the nano-seconds....
+    # Lose the nano-seconds.... always assume times in UTC
     try:
-        return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+        return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
     except:    
-        return parser.parse(str(time)[:19])
+        return parser.parse(str(time)[:19]).replace(tzinfo=datetime.timezone.utc)
 
 
 def as_level(self, level):
@@ -62,6 +62,11 @@ class Slice:
 class TimeSlice(Slice):
     pass
 
+class PressureLevelSlice(Slice):
+    pass
+
+class ModelLevelSlice(Slice):
+    pass
 
 class Coordinate:
     def __init__(self, variable, info):
@@ -99,13 +104,19 @@ class TimeCoordinate(Coordinate):
     convert = as_datetime
 
 
-class LevelCoordinate(Coordinate):
+class ModelLevelCoordinate(Coordinate):
     # This class is just in case we want to specialise
     # 'level', othewise, it is the same as OtherCoordinate
-    slice_class = Slice
-    is_dimension = False
+    slice_class = ModelLevelSlice
+    is_dimension = True
     convert = as_level
 
+class PressureLevelCoordinate(Coordinate):
+    # This class is just in case we want to specialise
+    # 'level', othewise, it is the same as OtherCoordinate
+    slice_class = PressureLevelSlice
+    is_dimension = True
+    convert = as_level
 
 class OtherCoordinate(Coordinate):
     slice_class = Slice
@@ -123,7 +134,14 @@ class NetCDFField(datatypes.Field):
         self.variable = variable
         self.slices = slices
 
-        self.name = self.variable
+        self.shortName = self.variable
+        self.companion = None # not yet supported for netCDF
+
+        self.longName = getattr(
+            ds[self.variable],
+            "long_name",
+            getattr(ds[self.variable], "standard_name", self.variable),
+        )
 
         self.levelist = None
         # if level:
@@ -133,12 +151,6 @@ class NetCDFField(datatypes.Field):
 
         if hasattr(context, magics_prefix):
             magics_prefix = context.magics_prefix
-
-        self.title = getattr(
-            ds[self.variable],
-            "long_name",
-            getattr(ds[self.variable], "standard_name", self.variable),
-        )
 
         self.legend_title = getattr(
             ds[self.variable], "{}_legend_title_text".format(magics_prefix), self.title
@@ -153,9 +165,15 @@ class NetCDFField(datatypes.Field):
 
             if isinstance(s, TimeSlice):
                 self.time = s.value
-            
-            # if isinstance(s, Slice):
-            #     self.levelist = s.value
+            elif isinstance(s, PressureLevelSlice):
+                # it's a pressure or model level
+                self.log.info("FOUND A PRESSURE LEVEL SLICE!!!")
+                self.levelist = s.value
+                self.levtype = "pl"
+            elif isinstance(s, ModelLevelSlice):
+                # it's a pressure or model level
+                self.levelist = s.value
+                self.levtype = "ml"
 
             if s.is_info:
                 self.title += " (" + s.name + "=" + str(s.value) + ")"
@@ -168,6 +186,47 @@ class NetCDFField(datatypes.Field):
             self.styles = context.stash[key] = context.styler.netcdf_styles(
                 self, ds[variable], path, variable
             )
+
+    @property
+    def name(self) -> str:
+        # override getter for name
+        nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+
+        if self.companion is None:
+            return "%s%s" % (self.shortName, nameSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+
+    @property
+    def group_name(self) -> str:
+        # override getter for name
+        nameSuffix = "" if self.levelist is None else "@%s" % (self.levtype)
+
+        if self.companion is None:
+            return "%s%s" % (self.shortName, nameSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+
+    @property
+    def title(self) -> str:
+        # override getter for title
+        titleSuffix = "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+
+        if self.companion is None:
+            return "%s%s" % (self.longName, titleSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+
+    @property
+    def group_title(self) -> str:
+        # override getter for title
+        titleSuffix = "" if self.levelist is None else " @ %s" % (self.levtype)
+
+        if self.companion is None:
+            return "%s%s" % (self.longName, titleSuffix)
+        else:
+            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+
 
     def render(self, context, driver, style, legend={}):
 
@@ -282,18 +341,24 @@ class NetCDFReader(datatypes.FieldReader):
                     has_lat = True
                     use = True
 
+                # TODO: Support other level types
+
                 # Of course, not every one sets the standard_name
                 if standard_name in ("time", "forecast_reference_time") or axis == "T":
                     coordinates.append(TimeCoordinate(c, coord in info))
                     use = True
-
-                # TODO: Support other level types
-                if standard_name in (
+                elif standard_name in (
                     "air_pressure",
-                    "model_level_number",
                     "altitude",
+                    "plev", # era5 pressure levels
+                    "isobaricInhPa", 
                 ):  # or axis == 'Z':
-                    coordinates.append(LevelCoordinate(c, coord in info))
+                    coordinates.append(PressureLevelCoordinate(c, coord in info))
+                    use = True
+                elif standard_name in (
+                    "model_level_number",
+                ):  # or axis == 'Z':
+                    coordinates.append(ModelLevelCoordinate(c, coord in info))
                     use = True
 
                 if not use:
@@ -307,7 +372,7 @@ class NetCDFReader(datatypes.FieldReader):
 
                 slices = []
                 for value, coordinate in zip(values, coordinates):
-
+                    self.log.info("COORDINATE %s:%s" %(coordinate, value))
                     slices.append(coordinate.make_slice(value))
 
                 fields.append(NetCDFField(self.context, self.path, ds, name, slices))

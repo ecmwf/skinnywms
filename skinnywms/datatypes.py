@@ -219,6 +219,9 @@ class Dimension:
         """
         raise NotImplementedError()
 
+    def __repr__(self) -> str:
+        return "%s[%s,%s,%s,%s,%s]" % (self.__class__, self.name, self.units, self.unitSymbol, self.default, self.extent)
+
 
 class TimeDimension(Dimension):
     def __init__(self, times:List[datetime.datetime]):
@@ -228,11 +231,22 @@ class TimeDimension(Dimension):
             default = None,
             extent = "",
             unitSymbol=None)
-        times = sorted(times)
-        self.default = times[0].isoformat() + "Z"
+        times = sorted([time.astimezone(tz = datetime.timezone.utc) for time in times]) # convert all times to utc
+        self.default = TimeDimension.format_time(times[0])
 
         self.extent = TimeDimension.format_extent(times)
-    
+
+    def equals(time1:datetime.datetime, time2:datetime.datetime) -> bool:
+        if time1 is None and time2 is None:
+            return True
+        elif time1 is None or time2 is None:
+            return False
+        else:
+            return (time1.astimezone(tz = datetime.timezone.utc) - time2.astimezone(tz = datetime.timezone.utc)).total_seconds() < 1
+
+    def format_time(time:datetime.datetime) -> str:
+        return time.astimezone(tz = datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+
     def format_extent(times:List[datetime.datetime]) -> str:
         """Formats a sorted list of times as WMS time extent string.
 
@@ -248,7 +262,7 @@ class TimeDimension(Dimension):
 
         # build the textual representation of the time dimension extent
         for time in times:
-            iso_ts = time.isoformat() + "Z"
+            iso_ts = TimeDimension.format_time(time)
 
             delta = time - prev_time
             prev_time = time
@@ -334,11 +348,56 @@ class DataLayer(Layer):
             super(DataLayer, self).__init__(field.group_name, field.group_title)
         else:
             super(DataLayer, self).__init__(field.name, field.title)
-        assert field.time is None or isinstance(field.time, datetime.datetime)
+        assert field.time is None or (
+            isinstance(field.time, datetime.datetime) 
+            and field.time == field.time.astimezone(tz = datetime.timezone.utc)
+            )
         assert field.levelist is None or isinstance(field.levelist, int)
         self._first = field
 
         self._fields = {(field.time, field.levelist): field}
+
+        self._time_dimension_is_none = field.time is None
+        self._times = None
+
+    def select_nearest_available_time(self, time:datetime.datetime) -> datetime.datetime:
+        """Selects the nearest available time less than or equal to 'time'.
+            If time is None, the earliest available time is returned.
+
+        Args:
+            time (datetime.datetime): the time
+
+        Returns:
+            datetime.datetime: the nearest available time less than or equal to 'time'
+        """
+        nearest_time = None
+        for atime in self.available_times():
+            if time is None:
+                return atime
+
+            if atime <= time:
+                nearest_time = atime
+            else:
+                return nearest_time
+        return nearest_time
+
+    def available_times(self) -> List[datetime.datetime]:
+        """Returns a sorted list of all available times. Returns an empty list, if no time dimension is available.
+
+        Returns:
+            List[datetime.datetime]: a sorted list of all available times
+        """
+        times = sorted({l[0] for l in self._fields.keys() if l[0] is not None})
+        return times
+
+    def available_elevations(self) -> List[int]:
+        """Return a sorted list of all available elevations. Returns an empty list, if no elevation dimension is available.
+
+        Returns:
+            List[int]: a sorted list of all available elevations
+        """
+        elevations = sorted({str(l[1]) for l in self._fields.keys() if l[1] is not None})
+        return elevations
 
     @property
     def group_dimensions(self) -> bool:
@@ -360,7 +419,11 @@ class DataLayer(Layer):
                 )
 
             # Cannot have a mix of None and Dates
-            assert field.time is not None or isinstance(field.time, datetime.datetime)
+            assert field.time is None and self._time_dimension_is_none or (
+                isinstance(field.time, datetime.datetime) 
+                and not self._time_dimension_is_none
+                and field.time == field.time.astimezone(tz = datetime.timezone.utc)
+                )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
@@ -374,7 +437,6 @@ class DataLayer(Layer):
                 #     "Duplicate date %s in %s (%s, %s)"
                 #     % (field.time, self, field, self._fields[field.time])
                 # )
-
             self._fields[(field.time, field.levelist)] = field
 
         else: # don't group levels
@@ -386,7 +448,11 @@ class DataLayer(Layer):
                 )
 
             # Cannot have a mix of None and Dates
-            assert field.time is not None or isinstance(field.time, datetime.datetime)
+            assert field.time is None and self._time_dimension_is_none or (
+                isinstance(field.time, datetime.datetime) 
+                and not self._time_dimension_is_none
+                and field.time == field.time.astimezone(tz = datetime.timezone.utc)
+                )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
@@ -404,35 +470,33 @@ class DataLayer(Layer):
             self._fields[(field.time, field.levelist)] = field
 
     @property
-    def fixed_layer(self):
-        return self._first.time is None
+    def fixed_layer(self) -> bool:
+        return self._first.time is None and self._first.levelist is None
 
     @property
-    def dimensions(self):
+    def dimensions(self) -> List[Dimension]:
         dims = []
         if not self.fixed_layer:
-            times = sorted(list({l[0] for l in self._fields.keys()}))
+            times = self.available_times()
             if len(times) > 0:
                 dims.append(TimeDimension(times))
-            elevation = sorted(list({str(l[1]) for l in self._fields.keys() if l[1] is not None}))
-            if len(elevation) > 0:
+            elevations = self.available_elevations()
+            if len(elevations) > 0:
                 elev_units = "computed_surface"
                 unit_symbol = ""
                 if self._first.levtype == "pl":
-                    # pressure levels
-                    # TODO: see if you can get the 
+                    # pressure levels, if it's CF compliant data, it's always in hPa
+                    # TODO: find out the actual units
                     elev_units = "hectoPascal"
                     unit_symbol = "hPa"
 
-                dims.append(
-                    ElevationDimension(
-                        # levels = [str(l) for l in range(100,1000,100)],
-                        levels = elevation,
+                elevdim = ElevationDimension(
+                        levels = elevations,
                         units=elev_units,
                         default=None,
                         unitSymbol=unit_symbol
                     )
-                )
+                dims.append(elevdim)
         return dims
 
     @property
@@ -452,20 +516,34 @@ class DataLayer(Layer):
         elevation = dims.get("elevation", None) # try get elevation string
         LOG.info("Look up layer with %s and time %s (%s) and elevation %s (%s)" % (self, time, type(time), elevation, type(elevation)))
 
+        valid_elevations = {}
         if time is None:
             time = self._first.time
+            valid_elevations = {self._first.levelist}
         else:
             # parse string date
             try:
-                time = datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S")
+                time = datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             except:
-                time = parser.parse(str(time)[:19])
+                time = parser.parse(str(time)[:19]).replace(tzinfo=datetime.timezone.utc)
+
+
+            # check if the given time exists
+            time = self.select_nearest_available_time(time)
+            valid_elevations = {i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)}
+            if len(valid_elevations) < 1:
+                raise KeyError("(%s,%s) TIME not found. Available combinations: %s" % (time,elevation, self._fields.keys()))
+                # selected time not found, fallback to a valid time
+                #time = self._first.time
+                valid_elevations = {self._first.levelist}
 
         if elevation is None:
-            elevation = [i[1] for i in self._fields.keys() if i[0] == time].pop(0)
+            elevation = valid_elevations.pop()
         else:
             # parse int elevation
             elevation = int(elevation)
+            if elevation not in valid_elevations:
+                elevation = valid_elevations.pop()
  
         if (time,elevation) not in self._fields.keys():
             raise KeyError("(%s,%s) not found. Available combinations: %s" % (time,elevation, self._fields.keys()))

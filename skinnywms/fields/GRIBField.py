@@ -6,6 +6,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+import datetime
 from threading import settrace
 from typing import Dict
 import weakref
@@ -46,7 +47,7 @@ class GRIBField(datatypes.Field):
 
         self.context = context
 
-        self.time = grib.valid_date
+        self.time = grib.valid_date if grib.valid_date is None else grib.valid_date.astimezone(tz = datetime.timezone.utc)
 
         self.levtype = grib.levtype
         if self.levtype == "150": self.levtype = "ml" # DWD ICON hack
