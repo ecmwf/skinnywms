@@ -611,7 +611,7 @@ class Styler(datatypes.Styler):
     
     def symbol(self, field, driver, style, legend={}):
 
-        print ( "FILE-> ", style)
+        # print ( "FILE-> ", style)
         styles = {
             "cloud_area_fraction" : driver.msymb(
                 symbol_advanced_table_height_method = "calculate",

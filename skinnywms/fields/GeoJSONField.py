@@ -30,10 +30,11 @@ class GeoJSONField(datatypes.Field):
         self.time = parser.parse(time).astimezone(tz = datetime.timezone.utc) #datetime.datetime.now()
         self.levelist = None
         self.name = name
-        self.title = self.name
+        # self.log.error("NAME FOUND: %s" % self.name)
+        self.title = name
         self.group_name = name
-        self.group_title = self.group_name
-        self.styles=[self.name]
+        self.group_title = name
+        self.styles=[name]
 
     
 
@@ -41,7 +42,7 @@ class GeoJSONField(datatypes.Field):
         data = []
 
         geojsonstring = geojson.dumps(self.featureCollection)
-        #pprint(geojsonstring)
+        # pprint(geojsonstring)
 
         
         data.append(driver.mgeojson(
