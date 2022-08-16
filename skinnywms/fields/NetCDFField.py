@@ -166,12 +166,11 @@ class NetCDFField(datatypes.Field):
             if isinstance(s, TimeSlice):
                 self.time = s.value
             elif isinstance(s, PressureLevelSlice):
-                # it's a pressure or model level
-                self.log.info("FOUND A PRESSURE LEVEL SLICE!!!")
+                # it's a pressure level
                 self.levelist = s.value
                 self.levtype = "pl"
             elif isinstance(s, ModelLevelSlice):
-                # it's a pressure or model level
+                # it's a model level
                 self.levelist = s.value
                 self.levtype = "ml"
 
@@ -353,6 +352,7 @@ class NetCDFReader(datatypes.FieldReader):
                     "plev", # era5 pressure levels
                     "isobaricInhPa", 
                 ):  # or axis == 'Z':
+                    # see also https://cfconventions.org/Data/cf-standard-names/current/build/cf-standard-name-table.html
                     coordinates.append(PressureLevelCoordinate(c, coord in info))
                     use = True
                 elif standard_name in (
