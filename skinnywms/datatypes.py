@@ -485,7 +485,8 @@ class DataLayer(Layer):
                 elev_units = "computed_surface"
                 unit_symbol = ""
                 if self._first.levtype == "pl":
-                    # pressure levels, if it's CF compliant data, it's always in hPa
+                    # pressure levels, usually in hPa (GRIB)
+                    # if it's NetCDF-CF compliant data, it's in Pa
                     # TODO: find out the actual units
                     elev_units = "hectoPascal"
                     unit_symbol = "hPa"
@@ -493,7 +494,7 @@ class DataLayer(Layer):
                 elevdim = ElevationDimension(
                         levels = elevations,
                         units=elev_units,
-                        default=None,
+                        default=elevations[0],
                         unitSymbol=unit_symbol
                     )
                 dims.append(elevdim)
