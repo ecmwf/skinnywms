@@ -20,7 +20,7 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "WARN"))
 
 application = Flask(__name__, static_url_path='/static')
 
-demo = os.path.join(os.path.dirname(__file__), "testdata", "sfc.grib")
+demo = os.path.join(os.path.dirname(__file__), "testdata")
 
 if os.environ.get("SKINNYWMS_DATA_PATH", "") != "":
     demo = os.environ.get("SKINNYWMS_DATA_PATH")
