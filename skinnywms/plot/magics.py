@@ -88,20 +88,64 @@ class StaticLayer(datatypes.Layer):
     def render(self, context, driver, style):
         return [
             driver.mcoast(
-                 map_coastline_colour            = "RGB(0.8,0.8,0.8,0.5)",
-    map_coastline_resolution        = "medium",
-    map_coastline_thickness         = 1,
-    map_coastline_land_shade        = "on",
-    map_coastline_land_shade_colour = "RGB(0.25,0.25,0.25)",
-    map_coastline_sea_shade         = "on",
-    map_coastline_sea_shade_colour  = "black",
-    map_grid                        = "off"
+                map_coastline_colour            = "RGB(0.8,0.8,0.8,0.5)",
+                map_coastline_resolution        = "medium",
+                map_coastline_thickness         = 1,
+                map_coastline_land_shade        = "on",
+                map_coastline_land_shade_colour = "RGB(0.25,0.25,0.25)",
+                map_coastline_sea_shade         = "on",
+                map_coastline_sea_shade_colour  = "black",
+                map_grid                        = "off"
             )
         ]
 
     def __repr__(self):
         return "StaticLayer[%s]" % (self.name,)
+class Cream(StaticLayer):
+    def render(self, context, driver, style):
+        return [
+             driver.mcoast(
+                map_coastline_colour            = "charcoal",
+                map_coastline_resolution        = "medium",
+                map_coastline_thickness         = 1,
+                map_coastline_land_shade        = "on",
+                map_coastline_land_shade_colour = "cream",
+                map_coastline_sea_shade         = "on",
+                map_coastline_sea_shade_colour  = "white",
+                map_grid                        = "off"
+            )
+        ]
 
+    def __repr__(self):
+        return "ForegroundLayer[%s]" % (self.name,)
+
+class Foreground(StaticLayer):
+    def render(self, context, driver, style):
+        return [
+            driver.mcoast(
+                map_coastline_colour="charcoal",
+                map_coastline_resolution="medium",
+                map_grid = "off"
+            )
+        ]
+
+    def __repr__(self):
+        return "ForegroundLayer[%s]" % (self.name,)
+
+class Boundaries(StaticLayer):
+    def render(self, context, driver, style):
+        return [
+            driver.mcoast(
+                map_coastline ="off",
+                map_coastline_resolution="medium",
+                map_boundaries = "on",
+                map_boundaries_colour = "grey",
+                map_grid=False,
+            )
+        ]
+
+    def __repr__(self):
+        return "ForegroundLayer[%s]" % (self.name,)
 
 class OceanLayer(StaticLayer):
     def render(self, context, driver, style):
@@ -176,10 +220,10 @@ class Plotter(datatypes.Plotter):
         self._styles = styles
 
         layers = [
-            StaticLayer("foreground", title="Foreground", zindex=99999),
-            StaticLayer("background", title="Background", zindex=-99999),
-            StaticLayer("grid", title="Grid", zindex=99999),
-            StaticLayer("boundaries", title="Boundaries", zindex=99999),
+            Foreground("foreground", title="Foreground", zindex=99999),
+            StaticLayer("background", title="Dark Background", zindex=-99999),
+            Cream("cream", title="Cream Background", zindex=-99999),
+            Boundaries("boundaries", title="Boundaries", zindex=99999),
             OceanLayer("oceans", title="Oceans", zindex=99999),
             USLayer("us-states", title="US States", zindex=99999),
         ]
