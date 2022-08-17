@@ -37,6 +37,7 @@ CMD uwsgi \
         --master \
         --process ${SKINNYWMS_UWSGI_WORKERS} \
         --mount ${SKINNYWMS_MOUNT}=skinnywms.wmssvr:application \
+        --static-map ${SKINNYWMS_MOUNT}static/=/app/skinnywms/skinnywms/static/ \
         --manage-script-name \
         --uid nobody
 
