@@ -174,9 +174,6 @@ class NetCDFField(datatypes.Field):
                 self.levelist = s.value
                 self.levtype = "ml"
 
-            if s.is_info:
-                self.title += " (" + s.name + "=" + str(s.value) + ")"
-
         key = "style.netcdf.%s" % (self.name,)
 
         # Optimisation
