@@ -47,7 +47,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        "ecmwflibs==0.4.18rc8",
+        "ecmwflibs==0.4.18rc9",
         "netCDF4", 
         "dask[array]",
         "Magics",
