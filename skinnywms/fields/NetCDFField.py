@@ -79,7 +79,7 @@ class Coordinate:
         if variable.values.ndim == 0:
             self.values = [self.convert(variable.values)]
         else:
-            self.values = [self.convert(t) for t in variable.values][:10]
+            self.values = [self.convert(t) for t in variable.values]
 
     def make_slice(self, value):
         return self.slice_class(
