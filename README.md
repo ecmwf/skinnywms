@@ -73,10 +73,14 @@ docker run --rm -p 5000:5000 -it \
     --env SKINNYWMS_PORT=5000 \
     --env SKINNYWMS_MOUNT=/mymodel/ \
     --env SKINNYWMS_UWSGI_WORKERS=4 \
-    --env SKINNYWMS_ENABLE_DIMENSION_GROUPING=1 \
       ecmwf/skinnywms
 ```
 Now you can access the ```GetCapabilities`` document for your data at http://localhost:5000/mymodel/wms?request=GetCapabilities
+
+
+Additional Configuration
+------------
+You can provide additional configuration, such as CORS configration, through environment variables. See [.env](.env) file for more details.
 
 
 Installation

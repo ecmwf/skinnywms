@@ -1,6 +1,7 @@
 # -*- coding: future_annotations -*-
 # from __future__ import annotations
-from abc import ABC, abstractmethod # see https://www.python.org/dev/peps/pep-0563/
+# see https://www.python.org/dev/peps/pep-0563/
+from abc import ABC, abstractmethod
 # (C) Copyright 2012-2019 ECMWF.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
@@ -65,7 +66,7 @@ class Style:
             name=self.name,
             title=self.title,
             description=self.description,
-            config=[s.as_dict() for s in self.config],
+            config=[s.as_dict() for s in self.config] if self.config else None,
         )
 
     def adjust_netcdf_plotting(self, params):
@@ -76,7 +77,7 @@ class Style:
 
 
 class Field:
-    def style(self, name:str) -> str:
+    def style(self, name: str) -> str:
 
         if name == "":
             if self.styles:
@@ -98,7 +99,7 @@ class Field:
             return "undefined"
 
     @name.setter
-    def name(self, value:str) -> None:
+    def name(self, value: str) -> None:
         self._name = value
 
     @property
@@ -109,7 +110,7 @@ class Field:
             return self.name  # fallback to name if unset
 
     @group_name.setter
-    def group_name(self, value:str) -> None:
+    def group_name(self, value: str) -> None:
         self._group_name = value
 
     @property
@@ -120,7 +121,7 @@ class Field:
             return "undefined"
 
     @title.setter
-    def title(self, value:str) -> None:
+    def title(self, value: str) -> None:
         self._title = value
 
     @property
@@ -131,7 +132,7 @@ class Field:
             return self.title  # fallback to title if unset
 
     @group_title.setter
-    def group_title(self, value:str) -> None:
+    def group_title(self, value: str) -> None:
         self._group_title = value
 
     @property
@@ -142,33 +143,33 @@ class Field:
             return None
 
     @companion.setter
-    def companion(self, value:Field) -> Field:
+    def companion(self, value: Field) -> Field:
         self._companion = value
 
 
 class FieldReader(ABC):
     """Get WMS layers (fields) from a file."""
 
-    def __init__(self, context:WMSServer, path:str) -> None:
+    def __init__(self, context: WMSServer, path: str) -> None:
         self._context = context
         self._path = path
 
     @property
     def context(self) -> WMSServer:
         return self._context
-    
+
     @context.setter
-    def context(self, context:WMSServer) -> None:
+    def context(self, context: WMSServer) -> None:
         self._context = weakref.ref(context)
-    
+
     @property
     def path(self) -> str:
         return self._path
-    
+
     @path.setter
-    def path(self, path:str) -> None:
+    def path(self, path: str) -> None:
         self._path = path
-    
+
     @abstractmethod
     def get_fields(self) -> List[Field]:
         """Returns a list of wms layers (fields)
@@ -179,14 +180,15 @@ class FieldReader(ABC):
         """
         raise NotImplementedError()
 
+
 class Layer:
-    def __init__(self, name:str, title:str, zindex:int=0, description:str=None, keywords:List[str]=[]):
+    def __init__(self, name: str, title: str, zindex: int = 0, description: str = None, keywords: List[str] = []):
         self.name = name
         self.title = title
         self.legend_title = self.title
         self.description = description
         self.zindex = zindex
-    
+
     def add_field(self, field: Field) -> None:
         """Adds a data field to this layer to group together data for the same parameter,
         e.g. with different time or elevation dimension.
@@ -198,14 +200,14 @@ class Layer:
 
 
 class Dimension:
-    def __init__(self, name:str, units:str, default:str, extent:str, unitSymbol:str):
+    def __init__(self, name: str, units: str, default: str, extent: str, unitSymbol: str):
         self.name = name
         self.units = units
         self.default = default
         self.extent = extent
         self.unitSymbol = unitSymbol
-    
-    def add_field(self, field:Field) -> None:
+
+    def add_field(self, field: Field) -> None:
         """Adds a data field to this dimension to group together data for the same parameter,
         that has the same dimensionality (e.g. time and elevation), but a different extent.
 
@@ -224,30 +226,31 @@ class Dimension:
 
 
 class TimeDimension(Dimension):
-    def __init__(self, times:List[datetime.datetime]):
+    def __init__(self, times: List[datetime.datetime]):
         super(TimeDimension, self).__init__(
-            name = "time", 
-            units = "ISO8601",
-            default = None,
-            extent = "",
+            name="time",
+            units="ISO8601",
+            default=None,
+            extent="",
             unitSymbol=None)
-        times = sorted([time.astimezone(tz = datetime.timezone.utc) for time in times]) # convert all times to utc
+        times = sorted([time.astimezone(tz=datetime.timezone.utc)
+                       for time in times])  # convert all times to utc
         self.default = TimeDimension.format_time(times[0])
 
         self.extent = TimeDimension.format_extent(times)
 
-    def equals(time1:datetime.datetime, time2:datetime.datetime) -> bool:
+    def equals(time1: datetime.datetime, time2: datetime.datetime) -> bool:
         if time1 is None and time2 is None:
             return True
         elif time1 is None or time2 is None:
             return False
         else:
-            return (time1.astimezone(tz = datetime.timezone.utc) - time2.astimezone(tz = datetime.timezone.utc)).total_seconds() < 1
+            return (time1.astimezone(tz=datetime.timezone.utc) - time2.astimezone(tz=datetime.timezone.utc)).total_seconds() < 1
 
-    def format_time(time:datetime.datetime) -> str:
-        return time.astimezone(tz = datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+    def format_time(time: datetime.datetime) -> str:
+        return time.astimezone(tz=datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
 
-    def format_extent(times:List[datetime.datetime]) -> str:
+    def format_extent(times: List[datetime.datetime]) -> str:
         """Formats a sorted list of times as WMS time extent string.
 
         :param times: a sorted list of times
@@ -267,15 +270,16 @@ class TimeDimension(Dimension):
             delta = time - prev_time
             prev_time = time
             if delta == last_delta and delta != datetime.timedelta(0):
-                extent[-1] = "/".join([last_iso_ts, iso_ts, TimeDimension.format_iso_8601_duration(delta)])
+                extent[-1] = "/".join([last_iso_ts, iso_ts,
+                                      TimeDimension.format_iso_8601_duration(delta)])
             else:
                 extent.append(iso_ts)
                 last_delta = delta
                 last_iso_ts = iso_ts
 
         return ",".join(extent)
-    
-    def format_iso_8601_duration(period:datetime.timedelta) -> str:
+
+    def format_iso_8601_duration(period: datetime.timedelta) -> str:
         """Converts a timedelta object into ISO 8601 duration/period format.
 
         :param period: the period to be converted
@@ -290,21 +294,22 @@ class TimeDimension(Dimension):
         if period.seconds > 0 or period.microseconds > 0:
             ret += "T"
         else:
-            return ret # no seconds or microseconds in this period
+            return ret  # no seconds or microseconds in this period
 
         remainder_s = period.seconds
         if remainder_s >= 3600:
-            ret += "%dH" % (remainder_s / 3600) # extract whole hours
+            ret += "%dH" % (remainder_s / 3600)  # extract whole hours
             remainder_s = remainder_s % 3600
 
         if remainder_s >= 60:
-            ret += "%dM" % (remainder_s / 60) # extract whole minutes
+            ret += "%dM" % (remainder_s / 60)  # extract whole minutes
             remainder_s = remainder_s % 60
 
         if remainder_s > 0 and period.microseconds == 0:
-            ret += "%dS" % remainder_s # only whole seconds
+            ret += "%dS" % remainder_s  # only whole seconds
         elif period.microseconds > 0:
-            ret += "%fS" % (remainder_s + period.microseconds/1000000) # floating point number
+            ret += "%fS" % (remainder_s + period.microseconds /
+                            1000000)  # floating point number
         return ret
 
 
@@ -320,38 +325,41 @@ class ElevationDimension(Dimension):
     2) Named surfaces
     <Dimension name="elevation" units="computed_surface" unitSymbol="" default="0" multipleValues="0" nearestValue="0" current="0">1/90/1</Dimension>
     """
-    def __init__(self, levels:List[str], default:str, units:str="computed_surface", unitSymbol:str=""):
+
+    def __init__(self, levels: List[str], default: str, units: str = "computed_surface", unitSymbol: str = ""):
         super(ElevationDimension, self).__init__(
-            name = "elevation", 
-            units = units,
-            default = default,
-            extent = ",".join(levels),
-            unitSymbol = unitSymbol
+            name="elevation",
+            units=units,
+            default=default,
+            extent=",".join(levels),
+            unitSymbol=unitSymbol
         )
 
         if self.default is None and len(levels) > 0:
             self.default = levels[0]
-        
+
         # TODO: process list of levels to fill extent
         # ...
-    
+
     def add_field(self, field: Field) -> None:
         pass
+
 
 class DataLayer(Layer):
 
     # TODO: check the time-zone of the dates....
 
-    def __init__(self, field:Field, group_dimensions:bool=False) -> None:
+    def __init__(self, field: Field, group_dimensions: bool = False) -> None:
         self._group_dimensions = group_dimensions
         if self._group_dimensions:
-            super(DataLayer, self).__init__(field.group_name, field.group_title)
+            super(DataLayer, self).__init__(
+                field.group_name, field.group_title)
         else:
             super(DataLayer, self).__init__(field.name, field.title)
         assert field.time is None or (
-            isinstance(field.time, datetime.datetime) 
-            and field.time == field.time.astimezone(tz = datetime.timezone.utc)
-            )
+            isinstance(field.time, datetime.datetime)
+            and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+        )
         assert field.levelist is None or isinstance(field.levelist, int)
         self._first = field
 
@@ -360,7 +368,7 @@ class DataLayer(Layer):
         self._time_dimension_is_none = field.time is None
         self._times = None
 
-    def select_nearest_available_time(self, time:datetime.datetime) -> datetime.datetime:
+    def select_nearest_available_time(self, time: datetime.datetime) -> datetime.datetime:
         """Selects the nearest available time less than or equal to 'time'.
             If time is None, the earliest available time is returned.
 
@@ -396,7 +404,8 @@ class DataLayer(Layer):
         Returns:
             List[int]: a sorted list of all available elevations
         """
-        elevations = sorted({str(l[1]) for l in self._fields.keys() if l[1] is not None})
+        elevations = sorted(
+            {str(l[1]) for l in self._fields.keys() if l[1] is not None})
         return elevations
 
     @property
@@ -415,15 +424,16 @@ class DataLayer(Layer):
 
             if self.title != field.group_title:
                 raise Exception(
-                    "Title redefined for %s [%s] => [%s]" % (self, self.title, field.group_title)
+                    "Title redefined for %s [%s] => [%s]" % (
+                        self, self.title, field.group_title)
                 )
 
             # Cannot have a mix of None and Dates
             assert field.time is None and self._time_dimension_is_none or (
-                isinstance(field.time, datetime.datetime) 
+                isinstance(field.time, datetime.datetime)
                 and not self._time_dimension_is_none
-                and field.time == field.time.astimezone(tz = datetime.timezone.utc)
-                )
+                and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+            )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
@@ -439,20 +449,21 @@ class DataLayer(Layer):
                 # )
             self._fields[(field.time, field.levelist)] = field
 
-        else: # don't group levels
+        else:  # don't group levels
             assert self.name == field.name
 
             if self.title != field.title:
                 raise Exception(
-                    "Title redefined for %s [%s] => [%s]" % (self, self.title, field.title)
+                    "Title redefined for %s [%s] => [%s]" % (
+                        self, self.title, field.title)
                 )
 
             # Cannot have a mix of None and Dates
             assert field.time is None and self._time_dimension_is_none or (
-                isinstance(field.time, datetime.datetime) 
+                isinstance(field.time, datetime.datetime)
                 and not self._time_dimension_is_none
-                and field.time == field.time.astimezone(tz = datetime.timezone.utc)
-                )
+                and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+            )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
@@ -492,11 +503,11 @@ class DataLayer(Layer):
                     unit_symbol = "hPa"
 
                 elevdim = ElevationDimension(
-                        levels = elevations,
-                        units=elev_units,
-                        default=elevations[0],
-                        unitSymbol=unit_symbol
-                    )
+                    levels=elevations,
+                    units=elev_units,
+                    default=elevations[0],
+                    unitSymbol=unit_symbol
+                )
                 dims.append(elevdim)
         return dims
 
@@ -512,10 +523,11 @@ class DataLayer(Layer):
         # TODO: select on more dimensions
         if dims is None:
             return self._first
-        
-        time = dims.get("time", None) # try get time string
-        elevation = dims.get("elevation", None) # try get elevation string
-        LOG.info("Look up layer with %s and time %s (%s) and elevation %s (%s)" % (self, time, type(time), elevation, type(elevation)))
+
+        time = dims.get("time", None)  # try get time string
+        elevation = dims.get("elevation", None)  # try get elevation string
+        LOG.info("Look up layer with %s and time %s (%s) and elevation %s (%s)" % (
+            self, time, type(time), elevation, type(elevation)))
 
         valid_elevations = {}
         if time is None:
@@ -524,18 +536,21 @@ class DataLayer(Layer):
         else:
             # parse string date
             try:
-                time = datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+                time = datetime.datetime.strptime(
+                    str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             except:
-                time = parser.parse(str(time)[:19]).replace(tzinfo=datetime.timezone.utc)
-
+                time = parser.parse(str(time)[:19]).replace(
+                    tzinfo=datetime.timezone.utc)
 
             # check if the given time exists
             time = self.select_nearest_available_time(time)
-            valid_elevations = {i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)}
+            valid_elevations = {
+                i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)}
             if len(valid_elevations) < 1:
-                raise KeyError("(%s,%s) TIME not found. Available combinations: %s" % (time,elevation, self._fields.keys()))
+                raise KeyError("(%s,%s) TIME not found. Available combinations: %s" % (
+                    time, elevation, self._fields.keys()))
                 # selected time not found, fallback to a valid time
-                #time = self._first.time
+                # time = self._first.time
                 valid_elevations = {self._first.levelist}
 
         if elevation is None:
@@ -545,33 +560,35 @@ class DataLayer(Layer):
             elevation = int(elevation)
             if elevation not in valid_elevations:
                 elevation = valid_elevations.pop()
- 
-        if (time,elevation) not in self._fields.keys():
-            raise KeyError("(%s,%s) not found. Available combinations: %s" % (time,elevation, self._fields.keys()))
 
-        return self._fields[(time,elevation)]
+        if (time, elevation) not in self._fields.keys():
+            raise KeyError("(%s,%s) not found. Available combinations: %s" % (
+                time, elevation, self._fields.keys()))
+
+        return self._fields[(time, elevation)]
 
     def as_dict(self):
         return dict(
             _class=self.__class__.__module__ + "." + self.__class__.__name__,
-            fields=[field.as_dict() for _, field in sorted(self._fields.items())],
+            fields=[field.as_dict()
+                    for _, field in sorted(self._fields.items())],
         )
 
 
 class Availability:
-    def __init__(self, auto_add_plotter_layers:bool=True, group_dimensions:bool=False):
+    def __init__(self, auto_add_plotter_layers: bool = True, group_dimensions: bool = False):
         self._context = None
-        self._layers:Dict[str,DataLayer] = {}
+        self._layers: Dict[str, DataLayer] = {}
         self._aliases = {}
         self._auto_add_plotter_layers = auto_add_plotter_layers
-        self._group_dimensions=group_dimensions
+        self._group_dimensions = group_dimensions
 
     @property
     def context(self) -> WMSServer:
         return self._context()
 
     # @context.setter
-    def set_context(self, context:WMSServer):
+    def set_context(self, context: WMSServer):
         self._context = weakref.ref(context)
 
     @property
@@ -588,9 +605,9 @@ class Availability:
     def auto_add_plotter_layers(self) -> bool:
         return self._auto_add_plotter_layers
 
-    def add_field(self, field:Field) -> None:
+    def add_field(self, field: Field) -> None:
         """Adds a data field to the list of available layers. 
-        
+
         If a layer with the same name as the field already exists,
         the field is added to the existing layer.
 
@@ -608,8 +625,9 @@ class Availability:
                 # exists, so try to group
                 self._layers[field.group_name].add_field(field)
             else:
-                self._layers[field.group_name] = DataLayer(field, group_dimensions=self.group_dimensions)
-        else: # don't group dimensions
+                self._layers[field.group_name] = DataLayer(
+                    field, group_dimensions=self.group_dimensions)
+        else:  # don't group dimensions
             if not self._layers:
                 self._aliases["default"] = field.name
 
@@ -618,14 +636,15 @@ class Availability:
                 # exists, so try to group
                 self._layers[field.name].add_field(field)
             else:
-                self._layers[field.name] = DataLayer(field, group_dimensions=self.group_dimensions)
+                self._layers[field.name] = DataLayer(
+                    field, group_dimensions=self.group_dimensions)
 
     def layers(self):
         if not self._layers:
             self.load()
         # return a sorted list
         ret = [l for l in self._layers.values()]
-        ret.sort(key=lambda x: x.name, reverse = False)
+        ret.sort(key=lambda x: x.name, reverse=False)
         return ret
 
     def layer(self, name, dims):
@@ -659,7 +678,7 @@ class Plotter:
         return self._context()
 
     # @context.setter
-    def set_context(self, context:WMSServer):
+    def set_context(self, context: WMSServer):
         self._context = weakref.ref(context)
 
     def layers(self):
@@ -700,5 +719,5 @@ class Styler:
         return self._context()
 
     # @context.setter
-    def set_context(self, context:WMSServer):
+    def set_context(self, context: WMSServer):
         self._context = weakref.ref(context)
