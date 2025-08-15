@@ -37,7 +37,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="skinnywms",
     version=version,
-    description="A light WMS server to visualise your NetCDf and Grib data",
+    description="A light WMS server to visualise your NetCDF and GRIB data",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="European Centre for Medium-Range Weather Forecasts (ECMWF)",
@@ -47,7 +47,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        "ecmwflibs==0.5.3",
+        "ecmwflibs>=0.5.3",
         "netCDF4", 
         "dask[array]",
         "Magics",
@@ -56,6 +56,7 @@ setuptools.setup(
         "geojson",
         "future-annotations", # A backport of __future__ annotations to python<3.7
         "python-dateutil",
+        "flask-cors",
     ],
     entry_points={
         "console_scripts": ["skinny-wms=skinnywms.skinny:main"],
@@ -74,6 +75,10 @@ setuptools.setup(
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Operating System :: OS Independent",

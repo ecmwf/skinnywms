@@ -8,8 +8,10 @@
 
 import os
 import argparse
+import re
 
 from flask import Flask, request, Response, render_template, send_file, jsonify, send_from_directory
+from flask_cors import CORS
 
 from .server import WMSServer
 from .plot.magics import Plotter, Styler
@@ -27,7 +29,26 @@ if os.environ.get("SKINNYWMS_DATA_PATH", "") != "":
 
 enable_dimension_grouping = False
 if os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING", "") != "":
-    enable_dimension_grouping = (os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING") == "1")
+    enable_dimension_grouping = (os.environ.get(
+        "SKINNYWMS_ENABLE_DIMENSION_GROUPING") == "1")
+
+dark_mode_enabled = False
+if os.environ.get("SKINNYWMS_DARK_MODE", "") != "":
+    dark_mode_enabled = (os.environ.get("SKINNYWMS_DARK_MODE") == "1")
+
+omit_default_layers = False
+if os.environ.get("SKINNYWMS_OMIT_DEFAULT_LAYERS", "") != "":
+    omit_default_layers = (os.environ.get(
+        "SKINNYWMS_OMIT_DEFAULT_LAYERS") == "1")
+
+origins = None
+if os.environ.get("SKINNYWMS_CORS_ORIGINS", "") != "":
+    cors_origins = os.environ.get("SKINNYWMS_CORS_ORIGINS")
+    if cors_origins == "*":
+        origins = "*"
+    else:
+        origins = cors_origins.split(",")
+
 
 parser = argparse.ArgumentParser(description="Simple WMS server")
 
@@ -63,6 +84,25 @@ parser.add_argument(
     help="Group together layers by more than the time dimension, e.g. by elevation"
 )
 
+parser.add_argument(
+    "--dark-mode",
+    action='store_true',
+    default=False,
+    help="Enable dark mode for default layers and legend graphics"
+)
+
+parser.add_argument(
+    "--omit-default-layers",
+    action='store_true',
+    default=False,
+    help="Omit default layers from the WMS response"
+)
+
+parser.add_argument(
+    "--cors-origins",
+    default="",
+    help="Comma-separated list of CORS origins, e.g. http://localhost:5000, https://example.com or '*' to allow all origins. If not specified, CORS is disabled.",
+)
 args = parser.parse_args()
 
 if args.style != "":
@@ -71,13 +111,31 @@ if args.style != "":
 if args.user_style != "":
     os.environ["MAGICS_USER_STYLE_PATH"] = args.user_style
 
+if args.dark_mode:
+    dark_mode_enabled = True
+
+if args.omit_default_layers:
+    omit_default_layers = True
+
+if args.cors_origins:
+    origins = '*' if args.cors_origins == "*" else args.cors_origins.split(",")
+
+if origins:
+    # Enable CORS for all endpoints
+    CORS(application, resources={
+         r"/*": {"origins": origins}
+         })
+    LOG = logging.getLogger("skinnywms.cors")
+    LOG.info("CORS enabled for all endpoints. Allowed origins: %s",
+             origins)
 
 group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
 
 server = WMSServer(
-    Availability(args.path, group_dimensions=group_dimensions), 
-    Plotter(args.baselayer), 
-    Styler(args.user_style)
+    Availability(args.path, group_dimensions=group_dimensions),
+    Plotter(args.baselayer, dark_mode=dark_mode_enabled,
+            omit_default_layers=omit_default_layers),
+    Styler(args.user_style, dark_mode=dark_mode_enabled),
 )
 
 
