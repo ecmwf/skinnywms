@@ -9,17 +9,20 @@
 
 import datetime
 from typing import Dict
+
 import numpy as np
 
-from .bindings import grib_get_metadata, grib_handle_delete, grib_get, grib_values
 from .bindings import (
-    grib_get_keys_values,
-    grib_get_gaussian_latitudes,
-    grib_pl_array,
-    grib_get_size,
+    grib_get,
     grib_get_code,
+    grib_get_gaussian_latitudes,
+    grib_get_keys_values,
+    grib_get_metadata,
+    grib_get_size,
+    grib_handle_delete,
+    grib_pl_array,
+    grib_values,
 )
-
 
 REGULAR_CACHE = {}
 REDUCED_CACHE = {}
@@ -330,7 +333,7 @@ class GribField(object):
             )
 
     @property
-    def metadata(self) -> Dict[str,str]:
+    def metadata(self) -> Dict[str, str]:
         return grib_get_metadata(self._handle)
 
     @property

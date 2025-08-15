@@ -53,7 +53,6 @@ _TEMPLATE_1_3_0 = """
 
 
 class WMSError(Exception):
-
     """Base class for WMS errors."""
 
     def __init__(self, message):
@@ -90,7 +89,6 @@ class WMSError(Exception):
 
 
 class GenericError(WMSError):
-
     """Error with undefined code."""
 
     def code(self, version):
@@ -98,7 +96,6 @@ class GenericError(WMSError):
 
 
 class CurrentUpdateSequence(WMSError):
-
     """Value of (optional) UpdateSequence parameter in GetCapabilities
     request is equal to current value of Capabilities XML update sequence
     number.
@@ -107,22 +104,18 @@ class CurrentUpdateSequence(WMSError):
 
 
 class InvalidDimensionValue(WMSError):
-
     """Request contains an invalid sample dimension value."""
 
 
 class InvalidFormat(WMSError):
-
     """Request contains a Format not offered by the service instance."""
 
 
 class InvalidPoint(WMSError):
-
     """GetFeatureInfo request contains invalid point coordinates."""
 
 
 class InvalidCRS(WMSError):
-
     """Request contains an CRS (or SRS, for WMS 1.1.1 requests) not
     offered by the service instance for one or more of the Layers in
     the request.
@@ -137,7 +130,6 @@ class InvalidCRS(WMSError):
 
 
 class InvalidUpdateSequence(WMSError):
-
     """Value of (optional) UpdateSequence parameter in GetCapabilities
     request is greater than current value of Capabilities XML update
     sequence number.
@@ -146,12 +138,10 @@ class InvalidUpdateSequence(WMSError):
 
 
 class LayerNotDefined(WMSError):
-
     """Request is for a Layer not offered by the service instance."""
 
 
 class LayerNotQueryable(WMSError):
-
     """GetFeatureInfo request is applied to a Layer which is not declared
     queryable.
 
@@ -159,7 +149,6 @@ class LayerNotQueryable(WMSError):
 
 
 class MissingDimensionValue(WMSError):
-
     """Request does not include a sample dimension value, and the service
     instance did not declare a default value for that dimension.
 
@@ -167,7 +156,6 @@ class MissingDimensionValue(WMSError):
 
 
 class OperationNotSupported(WMSError):
-
     """Request is for an optional operation that is not supported by the
     server.
 
@@ -175,12 +163,10 @@ class OperationNotSupported(WMSError):
 
 
 class ServiceNotDefined(WMSError):
-
     """The requested service is not available in this service instance."""
 
 
 class StyleNotDefined(WMSError):
-
     """Request is for a Layer in a Style not offered by the service
     instance.
 

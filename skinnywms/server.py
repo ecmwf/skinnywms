@@ -1,4 +1,3 @@
-# -*- coding: future_annotations -*-
 # (C) Copyright 2012-2019 ECMWF.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
@@ -7,8 +6,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-# from __future__ import annotations # see PEP 563, python 3.7+
-from typing import TYPE_CHECKING # see PEP 563, python 3.7+
+from typing import TYPE_CHECKING  # see PEP 563, python 3.7+
+
 if TYPE_CHECKING:
     from skinnywms.datatypes import Availability, Plotter, Styler
 
@@ -62,7 +61,13 @@ class NoCaching:
 
 
 class WMSServer:
-    def __init__(self, availability:Availability, plotter:Plotter, styler:Styler, caching=NoCaching()):
+    def __init__(
+        self,
+        availability: Availability,
+        plotter: Plotter,
+        styler: Styler,
+        caching=NoCaching(),
+    ):
 
         self.availability = availability
         self.availability.set_context(self)

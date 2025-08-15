@@ -6,21 +6,29 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-import os
 import argparse
+import logging
+import os
 import re
 
-from flask import Flask, request, Response, render_template, send_file, jsonify, send_from_directory
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    send_file,
+    send_from_directory,
+)
 from flask_cors import CORS
 
-from .server import WMSServer
-from .plot.magics import Plotter, Styler
 from .data.fs import Availability
-import logging
+from .plot.magics import Plotter, Styler
+from .server import WMSServer
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "WARN"))
 
-application = Flask(__name__, static_url_path='/static')
+application = Flask(__name__, static_url_path="/static")
 
 demo = os.path.join(os.path.dirname(__file__), "testdata")
 
@@ -29,17 +37,17 @@ if os.environ.get("SKINNYWMS_DATA_PATH", "") != "":
 
 enable_dimension_grouping = False
 if os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING", "") != "":
-    enable_dimension_grouping = (os.environ.get(
-        "SKINNYWMS_ENABLE_DIMENSION_GROUPING") == "1")
+    enable_dimension_grouping = (
+        os.environ.get("SKINNYWMS_ENABLE_DIMENSION_GROUPING") == "1"
+    )
 
 dark_mode_enabled = False
 if os.environ.get("SKINNYWMS_DARK_MODE", "") != "":
-    dark_mode_enabled = (os.environ.get("SKINNYWMS_DARK_MODE") == "1")
+    dark_mode_enabled = os.environ.get("SKINNYWMS_DARK_MODE") == "1"
 
 omit_default_layers = False
 if os.environ.get("SKINNYWMS_OMIT_DEFAULT_LAYERS", "") != "":
-    omit_default_layers = (os.environ.get(
-        "SKINNYWMS_OMIT_DEFAULT_LAYERS") == "1")
+    omit_default_layers = os.environ.get("SKINNYWMS_OMIT_DEFAULT_LAYERS") == "1"
 
 origins = None
 if os.environ.get("SKINNYWMS_CORS_ORIGINS", "") != "":
@@ -80,22 +88,22 @@ parser.add_argument(
 
 parser.add_argument(
     "--enable-dimension-grouping",
-    action='store_true',
-    help="Group together layers by more than the time dimension, e.g. by elevation"
+    action="store_true",
+    help="Group together layers by more than the time dimension, e.g. by elevation",
 )
 
 parser.add_argument(
     "--dark-mode",
-    action='store_true',
+    action="store_true",
     default=False,
-    help="Enable dark mode for default layers and legend graphics"
+    help="Enable dark mode for default layers and legend graphics",
 )
 
 parser.add_argument(
     "--omit-default-layers",
-    action='store_true',
+    action="store_true",
     default=False,
-    help="Omit default layers from the WMS response"
+    help="Omit default layers from the WMS response",
 )
 
 parser.add_argument(
@@ -118,23 +126,23 @@ if args.omit_default_layers:
     omit_default_layers = True
 
 if args.cors_origins:
-    origins = '*' if args.cors_origins == "*" else args.cors_origins.split(",")
+    origins = "*" if args.cors_origins == "*" else args.cors_origins.split(",")
 
 if origins:
     # Enable CORS for all endpoints
-    CORS(application, resources={
-         r"/*": {"origins": origins}
-         })
+    CORS(application, resources={r"/*": {"origins": origins}})
     LOG = logging.getLogger("skinnywms.cors")
-    LOG.info("CORS enabled for all endpoints. Allowed origins: %s",
-             origins)
+    LOG.info("CORS enabled for all endpoints. Allowed origins: %s", origins)
 
 group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
 
 server = WMSServer(
     Availability(args.path, group_dimensions=group_dimensions),
-    Plotter(args.baselayer, dark_mode=dark_mode_enabled,
-            omit_default_layers=omit_default_layers),
+    Plotter(
+        args.baselayer,
+        dark_mode=dark_mode_enabled,
+        omit_default_layers=omit_default_layers,
+    ),
     Styler(args.user_style, dark_mode=dark_mode_enabled),
 )
 

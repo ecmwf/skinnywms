@@ -8,8 +8,8 @@
 #
 
 import os
-from .bindings import grib_file_open
 
+from .bindings import grib_file_open
 from .GribField import GribField
 
 

@@ -6,21 +6,19 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+import json
 import logging
 import mimetypes
 import os
-import threading
 import pprint
-import json
+import threading
+from pathlib import Path
 
 from Magics import macro
-
-from pathlib import Path
 
 from skinnywms import datatypes, errors
 from skinnywms.fields.GRIBField import GRIBField
 from skinnywms.grib_bindings.GribField import GribField
-
 
 __all__ = [
     "Plotter",
@@ -97,7 +95,7 @@ class StaticLayer(datatypes.Layer):
                 map_coastline_land_shade_colour="RGB(0.25,0.25,0.25)",
                 map_coastline_sea_shade="on",
                 map_coastline_sea_shade_colour="black",
-                map_grid="off"
+                map_grid="off",
             )
         ]
 
@@ -116,7 +114,7 @@ class Cream(StaticLayer):
                 map_coastline_land_shade_colour="cream",
                 map_coastline_sea_shade="on",
                 map_coastline_sea_shade_colour="white",
-                map_grid="off"
+                map_grid="off",
             )
         ]
 
@@ -130,7 +128,7 @@ class Foreground(StaticLayer):
             driver.mcoast(
                 map_coastline_colour="charcoal",
                 map_coastline_resolution="medium",
-                map_grid="off"
+                map_grid="off",
             )
         ]
 
@@ -144,7 +142,7 @@ class LightForeground(StaticLayer):
             driver.mcoast(
                 map_coastline_colour="white",
                 map_coastline_resolution="medium",
-                map_grid="off"
+                map_grid="off",
             )
         ]
 
@@ -248,37 +246,49 @@ class Plotter(datatypes.Plotter):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, baselayer=None, styles=None, driver=macro, dark_mode=False, omit_default_layers=False):
+    def __init__(
+        self,
+        baselayer=None,
+        styles=None,
+        driver=macro,
+        dark_mode=False,
+        omit_default_layers=False,
+    ):
         self.driver = driver
         self.dark_mode = dark_mode
         self.legend_text_colour = "white" if dark_mode else "charcoal"
 
         self.wmscrs = driver.wmscrs()
 
-        self._CRSS = {crs["name"]: datatypes.CRS(
-            **crs) for crs in self.wmscrs["crss"]}
+        self._CRSS = {crs["name"]: datatypes.CRS(**crs) for crs in self.wmscrs["crss"]}
 
         if styles is None:
             styles = {}
         self._styles = styles
 
-        layers = ([
-            LightForeground("foreground", title="Foreground", zindex=99999),
-            StaticLayer("background", title="Default Background",
-                        zindex=-99999),
-            Boundaries("boundaries", title="Boundaries", zindex=99999),
-            OceanLayer("oceans", title="Oceans", zindex=99999),
-            LightUSLayer("us-states", title="US States", zindex=99999),
-        ]
-            if dark_mode
-            else [
-            Foreground("foreground", title="Foreground", zindex=99999),
-            Cream("background", title="Default Background", zindex=-99999),
-            Boundaries("boundaries", title="Boundaries", zindex=99999),
-            OceanLayer("oceans", title="Oceans", zindex=99999),
-            USLayer("us-states", title="US States", zindex=99999),
-        ]
-        ) if not omit_default_layers else []
+        layers = (
+            (
+                [
+                    LightForeground("foreground", title="Foreground", zindex=99999),
+                    StaticLayer(
+                        "background", title="Default Background", zindex=-99999
+                    ),
+                    Boundaries("boundaries", title="Boundaries", zindex=99999),
+                    OceanLayer("oceans", title="Oceans", zindex=99999),
+                    LightUSLayer("us-states", title="US States", zindex=99999),
+                ]
+                if dark_mode
+                else [
+                    Foreground("foreground", title="Foreground", zindex=99999),
+                    Cream("background", title="Default Background", zindex=-99999),
+                    Boundaries("boundaries", title="Boundaries", zindex=99999),
+                    OceanLayer("oceans", title="Oceans", zindex=99999),
+                    USLayer("us-states", title="US States", zindex=99999),
+                ]
+            )
+            if not omit_default_layers
+            else []
+        )
 
         if baselayer:
             name = os.path.basename(baselayer)
@@ -350,7 +360,7 @@ class Plotter(datatypes.Plotter):
             "page_frame": "off",
             "skinny_mode": "on",
             "page_id_line": "off",
-            "subpage_gutter_percentage": 20.,
+            "subpage_gutter_percentage": 20.0,
         }
 
         # add extra settings for polar stereographic projection when
@@ -465,7 +475,17 @@ class Plotter(datatypes.Plotter):
             return format, output_fname
 
     def legend(
-        self, context, output, format, height, layer, style, version, width, transparent, legend_title_position_ratio
+        self,
+        context,
+        output,
+        format,
+        height,
+        layer,
+        style,
+        version,
+        width,
+        transparent,
+        legend_title_position_ratio,
     ):
 
         try:
@@ -500,7 +520,7 @@ class Plotter(datatypes.Plotter):
                     subpage_y_length=height_cm,
                     subpage_x_position=0.0,
                     subpage_y_position=0.0,
-                    subpage_gutter_percentage=20.,
+                    subpage_gutter_percentage=20.0,
                     output_width=width,
                     page_frame="off",
                     page_id_line="off",
@@ -633,9 +653,7 @@ class Styler(datatypes.Styler):
         with LOCK:
             try:
                 styles = self.driver.wmsstyles(
-                    self.driver.minput(
-                        input_metadata=field.metadata
-                    )
+                    self.driver.minput(input_metadata=field.metadata)
                 )
                 # Looks like they are provided in reverse order
             except Exception as e:
@@ -644,7 +662,14 @@ class Styler(datatypes.Styler):
 
         return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
 
-    def grib_styles(self, field: GRIBField, grib: GribField, path: str, byte_offset: int, byte_offset_companion: int = None):
+    def grib_styles(
+        self,
+        field: GRIBField,
+        grib: GribField,
+        path: str,
+        byte_offset: int,
+        byte_offset_companion: int = None,
+    ):
         """Deprecated: Use grib_styles_from_meta instead."""
         if self.user_style:
             return [MagicsWebStyle(self.user_style["name"])]
@@ -659,7 +684,7 @@ class Styler(datatypes.Styler):
                             grib_wind_position_1=byte_offset,
                             grib_wind_position_2=byte_offset_companion,
                             grib_file_address_mode="byte_offset",
-                            grib_wind_style=True
+                            grib_wind_style=True,
                         )
                     )
 
@@ -668,7 +693,7 @@ class Styler(datatypes.Styler):
                         self.driver.mgrib(
                             grib_input_file_name=path,
                             grib_field_position=grib.byte_offset,
-                            grib_file_address_mode="byte_offset"
+                            grib_file_address_mode="byte_offset",
                         )
                     )
                 # Looks like they are provided in reverse order
@@ -720,20 +745,43 @@ class Styler(datatypes.Styler):
                 symbol_marker_mode="name",
                 symbol_advanced_table_selection_type="list",
                 symbol_advanced_table_colour_method="list",
-                symbol_advanced_table_colour_list=["#26001a",
-                                                     "#1d008a",
-                                                     "#113300",
-                                                     "#92003b",
-                                                     "#ff6e8f",
-                                                     "#e4bc00",
-                                                     "#ffb8e0",
-                                                     "#03fbec",
-                                                     "#b0ff95",
-                                                     "#e4f9ff"],
+                symbol_advanced_table_colour_list=[
+                    "#26001a",
+                    "#1d008a",
+                    "#113300",
+                    "#92003b",
+                    "#ff6e8f",
+                    "#e4bc00",
+                    "#ffb8e0",
+                    "#03fbec",
+                    "#b0ff95",
+                    "#e4f9ff",
+                ],
                 symbol_advanced_table_level_list=[
-                    0.0, 0.1, 12.5, 25, 37.5, 50.0, 62.5, 75.0, 87.5, 100],
-                symbol_advanced_table_marker_name_list=['N_0', 'N_1', 'N_2', 'N_3', 'N_4',
-                                                        'N_5', 'N_6', 'N_7', 'N_8', 'N_9'],),
+                    0.0,
+                    0.1,
+                    12.5,
+                    25,
+                    37.5,
+                    50.0,
+                    62.5,
+                    75.0,
+                    87.5,
+                    100,
+                ],
+                symbol_advanced_table_marker_name_list=[
+                    "N_0",
+                    "N_1",
+                    "N_2",
+                    "N_3",
+                    "N_4",
+                    "N_5",
+                    "N_6",
+                    "N_7",
+                    "N_8",
+                    "N_9",
+                ],
+            ),
             "present_weather": driver.mobs(
                 obs_template_file_name=OBS_TEMPLATE_PATH.as_posix(),
                 obs_size=0.6,
@@ -756,40 +804,64 @@ class Styler(datatypes.Styler):
                 symbol_type="marker",
                 symbol_table_mode="advanced",
                 symbol_advanced_table_selection_type="interval",
-                symbol_advanced_table_interval=10.,
+                symbol_advanced_table_interval=10.0,
                 symbol_advanced_table_colour_method="list",
-                symbol_advanced_table_colour_list=["RGB(0.7898,0.5906,0.6304)", "RGB(0.37,0.04564,0.1105)", "RGB(0.6481,0.02644,0.1404)",
-                                                     "RGB(0.9942,0.02538,0.1384)", "RGB(0.9942,0.4408,0.01758)", "RGB(0.9902,0.6293,0.005859)",
-                                                     "RGB(0.9961,0.8479,0.007828)", "RGB(0.9961,0.9796,0.007828)", "#ffff99"],
+                symbol_advanced_table_colour_list=[
+                    "RGB(0.7898,0.5906,0.6304)",
+                    "RGB(0.37,0.04564,0.1105)",
+                    "RGB(0.6481,0.02644,0.1404)",
+                    "RGB(0.9942,0.02538,0.1384)",
+                    "RGB(0.9942,0.4408,0.01758)",
+                    "RGB(0.9902,0.6293,0.005859)",
+                    "RGB(0.9961,0.8479,0.007828)",
+                    "RGB(0.9961,0.9796,0.007828)",
+                    "#ffff99",
+                ],
                 symbol_advanced_table_height_method="list",
                 symbol_advanced_table_height_list=[
-                    0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8],
-                symbol_marker_index=15),
-            "air_temperature": driver.msymb(legend="off",
-                                            symbol_type="marker",
-                                            symbol_table_mode="advanced",
-                                            symbol_advanced_table_selection_type="interval",
-                                            symbol_advanced_table_interval=0.1,
-                                            symbol_advanced_table_min_level_colour="lavender",
-                                            symbol_advanced_table_max_level_colour="violet",
-                                            symbol_advanced_table_colour_direction="clockwise",
-                                            symbol_advanced_table_height_method="calculate",
-                                            symbol_advanced_table_height_min_value=3.,
-                                            symbol_advanced_table_height_max_value=3.,
-                                            symbol_marker_mode="name",
-                                            symbol_advanced_table_marker_name_list=["duck"])
-
+                    0.2,
+                    0.4,
+                    0.6,
+                    0.8,
+                    1,
+                    1.2,
+                    1.4,
+                    1.6,
+                    1.8,
+                ],
+                symbol_marker_index=15,
+            ),
+            "air_temperature": driver.msymb(
+                legend="off",
+                symbol_type="marker",
+                symbol_table_mode="advanced",
+                symbol_advanced_table_selection_type="interval",
+                symbol_advanced_table_interval=0.1,
+                symbol_advanced_table_min_level_colour="lavender",
+                symbol_advanced_table_max_level_colour="violet",
+                symbol_advanced_table_colour_direction="clockwise",
+                symbol_advanced_table_height_method="calculate",
+                symbol_advanced_table_height_min_value=3.0,
+                symbol_advanced_table_height_max_value=3.0,
+                symbol_marker_mode="name",
+                symbol_advanced_table_marker_name_list=["duck"],
+            ),
         }
 
-        return styles.get(style, driver.msymb(legend="off",
-                                              symbol_type="marker",
-                                              symbol_table_mode="advanced",
-                                              symbol_advanced_table_selection_type="interval",
-                                              symbol_advanced_table_interval=0.1,
-                                              symbol_advanced_table_min_level_colour="lavender",
-                                              symbol_advanced_table_max_level_colour="violet",
-                                              symbol_advanced_table_colour_direction="clockwise",
-                                              symbol_advanced_table_height_method="calculate",
-                                              symbol_advanced_table_height_min_value=0.5,
-                                              symbol_advanced_table_height_max_value=0.5,
-                                              symbol_marker_index=15))
+        return styles.get(
+            style,
+            driver.msymb(
+                legend="off",
+                symbol_type="marker",
+                symbol_table_mode="advanced",
+                symbol_advanced_table_selection_type="interval",
+                symbol_advanced_table_interval=0.1,
+                symbol_advanced_table_min_level_colour="lavender",
+                symbol_advanced_table_max_level_colour="violet",
+                symbol_advanced_table_colour_direction="clockwise",
+                symbol_advanced_table_height_method="calculate",
+                symbol_advanced_table_height_min_value=0.5,
+                symbol_advanced_table_height_max_value=0.5,
+                symbol_marker_index=15,
+            ),
+        )

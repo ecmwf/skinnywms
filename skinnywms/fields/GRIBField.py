@@ -7,35 +7,36 @@
 # does it submit to any jurisdiction.
 
 import datetime
+import logging
+import weakref
 from threading import settrace
 from typing import Dict
-import weakref
+
+from skinnywms import datatypes, grib_bindings
 from skinnywms.grib_bindings.GribField import GribField
 from skinnywms.server import WMSServer
-from skinnywms import datatypes
-import logging
-from skinnywms import grib_bindings
 
-wind_companions = { "10u" : "10v", "u" : "v", "U_10m" : "V_10m", "U" : "V" }
+wind_companions = {"10u": "10v", "u": "v", "U_10m": "V_10m", "U": "V"}
 """A collection of wind u-component/v-component (key/value) grib shortName pairs that may be paired for better visualisation as wind barbs."""
 wind_ucomponents = set(wind_companions.keys())
 """A collection grib shortNames that represend wind u-components"""
 wind_vcomponents = set(wind_companions.values())
 
 # add the inverse combination as well to make matching independent of the order in which fields are processed
-for key,value in list(wind_companions.items()):
+for key, value in list(wind_companions.items()):
     wind_companions[value] = key
 
 possible_matches = {}
 """a collection of imported fields that could have companions
 which is filled during init process"""
 
+
 class GRIBField(datatypes.Field):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context: WMSServer, path: str, grib:GribField, index:int):
-        super(datatypes.Field,self).__init__()
+    def __init__(self, context: WMSServer, path: str, grib: GribField, index: int):
+        super(datatypes.Field, self).__init__()
 
         self.path = path
         self.index = index
@@ -47,14 +48,23 @@ class GRIBField(datatypes.Field):
 
         self.context = context
 
-        self.time = grib.valid_date if grib.valid_date is None else grib.valid_date.astimezone(tz = datetime.timezone.utc)
+        self.time = (
+            grib.valid_date
+            if grib.valid_date is None
+            else grib.valid_date.astimezone(tz=datetime.timezone.utc)
+        )
 
         self.levtype = grib.levtype
-        if self.levtype == "150": self.levtype = "ml" # DWD ICON hack
+        if self.levtype == "150":
+            self.levtype = "ml"  # DWD ICON hack
 
         self.shortName = grib.shortName
         self.longName = grib.name
-        self.levelist = grib.levelist if hasattr(grib,"levelist") and grib.levtype != "sfc" else None # None = 2d field
+        self.levelist = (
+            grib.levelist
+            if hasattr(grib, "levelist") and grib.levtype != "sfc"
+            else None
+        )  # None = 2d field
 
         self.companion = None
 
@@ -63,8 +73,8 @@ class GRIBField(datatypes.Field):
             companion_name = wind_companions[self.shortName]
             # get the possible companions that have already been found
             # but haven't been matched up with other fields
-            possible_companions = possible_matches.get(companion_name, []) 
-            
+            possible_companions = possible_matches.get(companion_name, [])
+
             for possible_companion in possible_companions:
                 # check if this companion matches
                 found = self.matches(possible_companion)
@@ -89,36 +99,40 @@ class GRIBField(datatypes.Field):
         # Optimisation
         self.styles = context.stash.get(key)
         if self.styles is None:
-            self.styles = context.stash[key] = context.styler.grib_styles_from_meta(self)
+            self.styles = context.stash[key] = context.styler.grib_styles_from_meta(
+                self
+            )
 
     @property
-    def metadata(self) -> Dict[str,str]:
+    def metadata(self) -> Dict[str, str]:
         if self.companion is None:
             return self._metadata
         else:
             joined_meta = {}
-            common_keys = set(self.ucomponent._metadata.keys()).intersection(set(self.vcomponent._metadata.keys()))
+            common_keys = set(self.ucomponent._metadata.keys()).intersection(
+                set(self.vcomponent._metadata.keys())
+            )
             for key in common_keys:
-                joined_meta[key] = "%s/%s" % (self.ucomponent._metadata[key], self.vcomponent._metadata[key])
+                joined_meta[key] = "%s/%s" % (
+                    self.ucomponent._metadata[key],
+                    self.vcomponent._metadata[key],
+                )
             return joined_meta
-    
+
     @metadata.setter
-    def metadata(self, metadata:Dict[str,str]):
+    def metadata(self, metadata: Dict[str, str]):
         self._metadata = metadata
 
-    
     @property
     def context(self) -> WMSServer:
         return self._context()
-    
+
     @property
     def magics_metadata():
-        return {
-            ""
-        }
+        return {""}
 
     @context.setter
-    def context(self, context:WMSServer):
+    def context(self, context: WMSServer):
         self._context = weakref.ref(context)
 
     def matches(self, other) -> bool:
@@ -141,8 +155,8 @@ class GRIBField(datatypes.Field):
         return True
 
     def update_companions(self, companion):
-        """Updates/overwrites self.companion with the given companion and vice versa. 
-        Updates render function and ucomponent and vcomponent attributes for 
+        """Updates/overwrites self.companion with the given companion and vice versa.
+        Updates render function and ucomponent and vcomponent attributes for
         self and companion.
 
         :param companion: the new companion field
@@ -164,18 +178,26 @@ class GRIBField(datatypes.Field):
         companion.render = companion.render_wind
 
         key = "style.grib.%s" % (self.name,)
-        self.styles = self.context.stash[key] = self.context.styler.grib_styles_from_meta(self)
+        self.styles = self.context.stash[key] = (
+            self.context.styler.grib_styles_from_meta(self)
+        )
         companion.styles = self.styles
 
     @property
     def name(self) -> str:
         # override getter for name
-        nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+        nameSuffix = (
+            "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+        )
 
         if self.companion is None:
             return "%s%s" % (self.shortName, nameSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.shortName,
+                self.vcomponent.shortName,
+                nameSuffix,
+            )
 
     @property
     def group_name(self) -> str:
@@ -185,17 +207,27 @@ class GRIBField(datatypes.Field):
         if self.companion is None:
             return "%s%s" % (self.shortName, nameSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.shortName,
+                self.vcomponent.shortName,
+                nameSuffix,
+            )
 
     @property
     def title(self) -> str:
         # override getter for title
-        titleSuffix = "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+        titleSuffix = (
+            "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+        )
 
         if self.companion is None:
             return "%s%s" % (self.longName, titleSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.longName,
+                self.vcomponent.longName,
+                titleSuffix,
+            )
 
     @property
     def group_title(self) -> str:
@@ -205,14 +237,18 @@ class GRIBField(datatypes.Field):
         if self.companion is None:
             return "%s%s" % (self.longName, titleSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.longName,
+                self.vcomponent.longName,
+                titleSuffix,
+            )
 
     def render_contour(self, context, driver, style, legend={}) -> list:
         data = []
         params = dict(
-            grib_input_file_name=self.path, 
-            grib_field_position=self.byte_offset, 
-            grib_file_address_mode="byte_offset"
+            grib_input_file_name=self.path,
+            grib_field_position=self.byte_offset,
+            grib_file_address_mode="byte_offset",
         )
 
         if style:
@@ -227,10 +263,10 @@ class GRIBField(datatypes.Field):
         data = []
 
         params = dict(
-            grib_input_file_name = self.path,
-            grib_wind_position_1 = self.ucomponent.byte_offset,
-            grib_wind_position_2 = self.vcomponent.byte_offset,
-            grib_file_address_mode="byte_offset"
+            grib_input_file_name=self.path,
+            grib_wind_position_1=self.ucomponent.byte_offset,
+            grib_wind_position_2=self.vcomponent.byte_offset,
+            grib_file_address_mode="byte_offset",
         )
 
         if style:
@@ -267,13 +303,12 @@ class GRIBField(datatypes.Field):
 
 
 class GRIBReader(datatypes.FieldReader):
-
     """Get WMS layers from a GRIB file."""
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context:WMSServer, path:str):
-        super(GRIBReader,self).__init__(context=context, path=path)
+    def __init__(self, context: WMSServer, path: str):
+        super(GRIBReader, self).__init__(context=context, path=path)
 
     def get_fields(self) -> list:
         self.log.info("Scanning file: %s", self.path)

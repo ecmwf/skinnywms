@@ -7,11 +7,14 @@
 # does it submit to any jurisdiction.
 
 import logging
+
 import yaml
+
 from skinnywms import datatypes, errors
 from skinnywms.fields.mvfield import MvField
 
 __all__ = ["MvAvailability"]
+
 
 class MvLayer(datatypes.Layer):
     def __init__(self, loader, name, title, zindex, conf):

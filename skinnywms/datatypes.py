@@ -1,7 +1,14 @@
-# -*- coding: future_annotations -*-
-# from __future__ import annotations
-# see https://www.python.org/dev/peps/pep-0563/
+import datetime
+import logging
+import weakref
 from abc import ABC, abstractmethod
+from typing import Dict, List
+
+from dateutil import parser
+
+from skinnywms import errors
+from skinnywms.server import WMSServer
+
 # (C) Copyright 2012-2019 ECMWF.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
@@ -10,15 +17,6 @@ from abc import ABC, abstractmethod
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-import datetime
-from dateutil import parser
-import logging
-from skinnywms.server import WMSServer
-from skinnywms import errors
-
-from typing import List, Dict
-
-import weakref
 
 __all__ = [
     "Availability",
@@ -182,7 +180,14 @@ class FieldReader(ABC):
 
 
 class Layer:
-    def __init__(self, name: str, title: str, zindex: int = 0, description: str = None, keywords: List[str] = []):
+    def __init__(
+        self,
+        name: str,
+        title: str,
+        zindex: int = 0,
+        description: str = None,
+        keywords: List[str] = [],
+    ):
         self.name = name
         self.title = title
         self.legend_title = self.title
@@ -200,7 +205,9 @@ class Layer:
 
 
 class Dimension:
-    def __init__(self, name: str, units: str, default: str, extent: str, unitSymbol: str):
+    def __init__(
+        self, name: str, units: str, default: str, extent: str, unitSymbol: str
+    ):
         self.name = name
         self.units = units
         self.default = default
@@ -222,19 +229,24 @@ class Dimension:
         raise NotImplementedError()
 
     def __repr__(self) -> str:
-        return "%s[%s,%s,%s,%s,%s]" % (self.__class__, self.name, self.units, self.unitSymbol, self.default, self.extent)
+        return "%s[%s,%s,%s,%s,%s]" % (
+            self.__class__,
+            self.name,
+            self.units,
+            self.unitSymbol,
+            self.default,
+            self.extent,
+        )
 
 
 class TimeDimension(Dimension):
     def __init__(self, times: List[datetime.datetime]):
         super(TimeDimension, self).__init__(
-            name="time",
-            units="ISO8601",
-            default=None,
-            extent="",
-            unitSymbol=None)
-        times = sorted([time.astimezone(tz=datetime.timezone.utc)
-                       for time in times])  # convert all times to utc
+            name="time", units="ISO8601", default=None, extent="", unitSymbol=None
+        )
+        times = sorted(
+            [time.astimezone(tz=datetime.timezone.utc) for time in times]
+        )  # convert all times to utc
         self.default = TimeDimension.format_time(times[0])
 
         self.extent = TimeDimension.format_extent(times)
@@ -245,10 +257,15 @@ class TimeDimension(Dimension):
         elif time1 is None or time2 is None:
             return False
         else:
-            return (time1.astimezone(tz=datetime.timezone.utc) - time2.astimezone(tz=datetime.timezone.utc)).total_seconds() < 1
+            return (
+                time1.astimezone(tz=datetime.timezone.utc)
+                - time2.astimezone(tz=datetime.timezone.utc)
+            ).total_seconds() < 1
 
     def format_time(time: datetime.datetime) -> str:
-        return time.astimezone(tz=datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+        return (
+            time.astimezone(tz=datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+        )
 
     def format_extent(times: List[datetime.datetime]) -> str:
         """Formats a sorted list of times as WMS time extent string.
@@ -270,8 +287,9 @@ class TimeDimension(Dimension):
             delta = time - prev_time
             prev_time = time
             if delta == last_delta and delta != datetime.timedelta(0):
-                extent[-1] = "/".join([last_iso_ts, iso_ts,
-                                      TimeDimension.format_iso_8601_duration(delta)])
+                extent[-1] = "/".join(
+                    [last_iso_ts, iso_ts, TimeDimension.format_iso_8601_duration(delta)]
+                )
             else:
                 extent.append(iso_ts)
                 last_delta = delta
@@ -308,8 +326,9 @@ class TimeDimension(Dimension):
         if remainder_s > 0 and period.microseconds == 0:
             ret += "%dS" % remainder_s  # only whole seconds
         elif period.microseconds > 0:
-            ret += "%fS" % (remainder_s + period.microseconds /
-                            1000000)  # floating point number
+            ret += "%fS" % (
+                remainder_s + period.microseconds / 1000000
+            )  # floating point number
         return ret
 
 
@@ -326,13 +345,19 @@ class ElevationDimension(Dimension):
     <Dimension name="elevation" units="computed_surface" unitSymbol="" default="0" multipleValues="0" nearestValue="0" current="0">1/90/1</Dimension>
     """
 
-    def __init__(self, levels: List[str], default: str, units: str = "computed_surface", unitSymbol: str = ""):
+    def __init__(
+        self,
+        levels: List[str],
+        default: str,
+        units: str = "computed_surface",
+        unitSymbol: str = "",
+    ):
         super(ElevationDimension, self).__init__(
             name="elevation",
             units=units,
             default=default,
             extent=",".join(levels),
-            unitSymbol=unitSymbol
+            unitSymbol=unitSymbol,
         )
 
         if self.default is None and len(levels) > 0:
@@ -352,8 +377,7 @@ class DataLayer(Layer):
     def __init__(self, field: Field, group_dimensions: bool = False) -> None:
         self._group_dimensions = group_dimensions
         if self._group_dimensions:
-            super(DataLayer, self).__init__(
-                field.group_name, field.group_title)
+            super(DataLayer, self).__init__(field.group_name, field.group_title)
         else:
             super(DataLayer, self).__init__(field.name, field.title)
         assert field.time is None or (
@@ -368,7 +392,9 @@ class DataLayer(Layer):
         self._time_dimension_is_none = field.time is None
         self._times = None
 
-    def select_nearest_available_time(self, time: datetime.datetime) -> datetime.datetime:
+    def select_nearest_available_time(
+        self, time: datetime.datetime
+    ) -> datetime.datetime:
         """Selects the nearest available time less than or equal to 'time'.
             If time is None, the earliest available time is returned.
 
@@ -405,7 +431,8 @@ class DataLayer(Layer):
             List[int]: a sorted list of all available elevations
         """
         elevations = sorted(
-            {str(l[1]) for l in self._fields.keys() if l[1] is not None})
+            {str(l[1]) for l in self._fields.keys() if l[1] is not None}
+        )
         return elevations
 
     @property
@@ -424,22 +451,32 @@ class DataLayer(Layer):
 
             if self.title != field.group_title:
                 raise Exception(
-                    "Title redefined for %s [%s] => [%s]" % (
-                        self, self.title, field.group_title)
+                    "Title redefined for %s [%s] => [%s]"
+                    % (self, self.title, field.group_title)
                 )
 
             # Cannot have a mix of None and Dates
-            assert field.time is None and self._time_dimension_is_none or (
-                isinstance(field.time, datetime.datetime)
-                and not self._time_dimension_is_none
-                and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+            assert (
+                field.time is None
+                and self._time_dimension_is_none
+                or (
+                    isinstance(field.time, datetime.datetime)
+                    and not self._time_dimension_is_none
+                    and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+                )
             )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
                 LOG.info(
                     "Duplicate field (time: %s, elevation: %s) in %s (%s, %s)"
-                    % (field.time, field.levelist, self, field, self._fields[(field.time, field.levelist)])
+                    % (
+                        field.time,
+                        field.levelist,
+                        self,
+                        field,
+                        self._fields[(field.time, field.levelist)],
+                    )
                 )
 
                 # # Why are we sometimes throwing this exception .. : need to be checked
@@ -454,22 +491,32 @@ class DataLayer(Layer):
 
             if self.title != field.title:
                 raise Exception(
-                    "Title redefined for %s [%s] => [%s]" % (
-                        self, self.title, field.title)
+                    "Title redefined for %s [%s] => [%s]"
+                    % (self, self.title, field.title)
                 )
 
             # Cannot have a mix of None and Dates
-            assert field.time is None and self._time_dimension_is_none or (
-                isinstance(field.time, datetime.datetime)
-                and not self._time_dimension_is_none
-                and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+            assert (
+                field.time is None
+                and self._time_dimension_is_none
+                or (
+                    isinstance(field.time, datetime.datetime)
+                    and not self._time_dimension_is_none
+                    and field.time == field.time.astimezone(tz=datetime.timezone.utc)
+                )
             )
             assert field.levelist is None or isinstance(field.levelist, int)
 
             if (field.time, field.levelist) in self._fields:
                 LOG.info(
                     "Duplicate field (time: %s, elevation: %s) in %s (%s, %s)"
-                    % (field.time, field.levelist, self, field, self._fields[(field.time, field.levelist)])
+                    % (
+                        field.time,
+                        field.levelist,
+                        self,
+                        field,
+                        self._fields[(field.time, field.levelist)],
+                    )
                 )
 
                 # # Why are we sometimes throwing this exception .. : need to be checked
@@ -506,7 +553,7 @@ class DataLayer(Layer):
                     levels=elevations,
                     units=elev_units,
                     default=elevations[0],
-                    unitSymbol=unit_symbol
+                    unitSymbol=unit_symbol,
                 )
                 dims.append(elevdim)
         return dims
@@ -526,8 +573,10 @@ class DataLayer(Layer):
 
         time = dims.get("time", None)  # try get time string
         elevation = dims.get("elevation", None)  # try get elevation string
-        LOG.info("Look up layer with %s and time %s (%s) and elevation %s (%s)" % (
-            self, time, type(time), elevation, type(elevation)))
+        LOG.info(
+            "Look up layer with %s and time %s (%s) and elevation %s (%s)"
+            % (self, time, type(time), elevation, type(elevation))
+        )
 
         valid_elevations = {}
         if time is None:
@@ -537,18 +586,23 @@ class DataLayer(Layer):
             # parse string date
             try:
                 time = datetime.datetime.strptime(
-                    str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+                    str(time)[:19], "%Y-%m-%dT%H:%M:%S"
+                ).replace(tzinfo=datetime.timezone.utc)
             except:
                 time = parser.parse(str(time)[:19]).replace(
-                    tzinfo=datetime.timezone.utc)
+                    tzinfo=datetime.timezone.utc
+                )
 
             # check if the given time exists
             time = self.select_nearest_available_time(time)
             valid_elevations = {
-                i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)}
+                i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)
+            }
             if len(valid_elevations) < 1:
-                raise KeyError("(%s,%s) TIME not found. Available combinations: %s" % (
-                    time, elevation, self._fields.keys()))
+                raise KeyError(
+                    "(%s,%s) TIME not found. Available combinations: %s"
+                    % (time, elevation, self._fields.keys())
+                )
                 # selected time not found, fallback to a valid time
                 # time = self._first.time
                 valid_elevations = {self._first.levelist}
@@ -562,21 +616,24 @@ class DataLayer(Layer):
                 elevation = valid_elevations.pop()
 
         if (time, elevation) not in self._fields.keys():
-            raise KeyError("(%s,%s) not found. Available combinations: %s" % (
-                time, elevation, self._fields.keys()))
+            raise KeyError(
+                "(%s,%s) not found. Available combinations: %s"
+                % (time, elevation, self._fields.keys())
+            )
 
         return self._fields[(time, elevation)]
 
     def as_dict(self):
         return dict(
             _class=self.__class__.__module__ + "." + self.__class__.__name__,
-            fields=[field.as_dict()
-                    for _, field in sorted(self._fields.items())],
+            fields=[field.as_dict() for _, field in sorted(self._fields.items())],
         )
 
 
 class Availability:
-    def __init__(self, auto_add_plotter_layers: bool = True, group_dimensions: bool = False):
+    def __init__(
+        self, auto_add_plotter_layers: bool = True, group_dimensions: bool = False
+    ):
         self._context = None
         self._layers: Dict[str, DataLayer] = {}
         self._aliases = {}
@@ -606,7 +663,7 @@ class Availability:
         return self._auto_add_plotter_layers
 
     def add_field(self, field: Field) -> None:
-        """Adds a data field to the list of available layers. 
+        """Adds a data field to the list of available layers.
 
         If a layer with the same name as the field already exists,
         the field is added to the existing layer.
@@ -626,7 +683,8 @@ class Availability:
                 self._layers[field.group_name].add_field(field)
             else:
                 self._layers[field.group_name] = DataLayer(
-                    field, group_dimensions=self.group_dimensions)
+                    field, group_dimensions=self.group_dimensions
+                )
         else:  # don't group dimensions
             if not self._layers:
                 self._aliases["default"] = field.name
@@ -637,7 +695,8 @@ class Availability:
                 self._layers[field.name].add_field(field)
             else:
                 self._layers[field.name] = DataLayer(
-                    field, group_dimensions=self.group_dimensions)
+                    field, group_dimensions=self.group_dimensions
+                )
 
     def layers(self):
         if not self._layers:

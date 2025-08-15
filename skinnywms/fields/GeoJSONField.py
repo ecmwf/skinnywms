@@ -6,15 +6,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-from pprint import pprint
-from typing import Any, Dict, List
-from skinnywms import datatypes
-from dateutil import parser
+import datetime
 import logging
 import os
-import datetime
-import geojson
+from pprint import pprint
+from typing import Any, Dict, List
 
+import geojson
+from dateutil import parser
+
+from skinnywms import datatypes
 from skinnywms.server import WMSServer
 
 
@@ -22,12 +23,20 @@ class GeoJSONField(datatypes.Field):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context: WMSServer, path: str, featureCollection: geojson.FeatureCollection, name: str, time: str):
+    def __init__(
+        self,
+        context: WMSServer,
+        path: str,
+        featureCollection: geojson.FeatureCollection,
+        name: str,
+        time: str,
+    ):
 
         self.path = path
         self.featureCollection = featureCollection
         self.time = parser.parse(time).astimezone(
-            tz=datetime.timezone.utc)  # datetime.datetime.now()
+            tz=datetime.timezone.utc
+        )  # datetime.datetime.now()
         self.levelist = None
         self.name = name
         # self.log.error("NAME FOUND: %s" % self.name)
@@ -42,15 +51,15 @@ class GeoJSONField(datatypes.Field):
         geojsonstring = geojson.dumps(self.featureCollection)
         # pprint(geojsonstring)
 
-        data.append(driver.mgeojson(
-            geojson_input_type="string",
-            geojson_input=geojsonstring,
-            geojson_value_property=self.name
-        ))
-
         data.append(
-            context.styler.symbol(self, driver, style, legend)
+            driver.mgeojson(
+                geojson_input_type="string",
+                geojson_input=geojsonstring,
+                geojson_value_property=self.name,
+            )
         )
+
+        data.append(context.styler.symbol(self, driver, style, legend))
 
         return data
 
@@ -71,7 +80,6 @@ class GeoJSONField(datatypes.Field):
 
 
 class GeoJSONReader(datatypes.FieldReader):
-
     """Get WMS layers from a GeoJSON file."""
 
     log = logging.getLogger(__name__)
@@ -96,12 +104,18 @@ class GeoJSONReader(datatypes.FieldReader):
     def __init__(self, context: WMSServer, path: str):
         super(GeoJSONReader, self).__init__(context=context, path=path)
 
-    def build_features(point: geojson.Point, properties: Dict[str, Any], split_properties: bool = True, name: str = "") -> List[geojson.Feature]:
+    def build_features(
+        point: geojson.Point,
+        properties: Dict[str, Any],
+        split_properties: bool = True,
+        name: str = "",
+    ) -> List[geojson.Feature]:
         features: List[geojson.Feature] = []
         time: str = None
         if "time" not in properties.keys():
             GeoJSONReader.log.error(
-                "'time' field missing in timeseries property, skipping...")
+                "'time' field missing in timeseries property, skipping..."
+            )
         else:
             time = properties["time"]
 
@@ -119,9 +133,7 @@ class GeoJSONReader(datatypes.FieldReader):
                         "name": name,  # station name
                         item_name: item_value,
                     }
-                    features.append(
-                        geojson.Feature(geometry=point, properties=prop)
-                    )
+                    features.append(geojson.Feature(geometry=point, properties=prop))
         else:
             # do not split properties, just include the known ones
             filtered_props = {}
@@ -130,12 +142,12 @@ class GeoJSONReader(datatypes.FieldReader):
                     filtered_props[item_name] = item_value
 
             filtered_props["name"] = name
-            features.append(
-                geojson.Feature(geometry=point, properties=filtered_props)
-            )
+            features.append(geojson.Feature(geometry=point, properties=filtered_props))
         return features
 
-    def extract_features(feature: Dict[str, Any], split_properties: bool = True) -> List[geojson.Feature]:
+    def extract_features(
+        feature: Dict[str, Any], split_properties: bool = True
+    ) -> List[geojson.Feature]:
         features: List[geojson.Feature] = []
         props = set(feature.keys())
         diff = GeoJSONReader.REQUIRED_FIELDS.difference(props)
@@ -143,8 +155,7 @@ class GeoJSONReader(datatypes.FieldReader):
             GeoJSONReader.log.error("Missing Feature properties: %s", diff)
             return
         if feature["type"] != "Feature":
-            GeoJSONReader.log.error(
-                "Unsupported feature type: %s", feature["type"])
+            GeoJSONReader.log.error("Unsupported feature type: %s", feature["type"])
             return
 
         point = geojson.Point(coordinates=feature["geometry"]["coordinates"])
@@ -154,15 +165,14 @@ class GeoJSONReader(datatypes.FieldReader):
             name = feature["properties"]["name"]
 
         if "timeseries" in feature["properties"].keys():
-            timeseries: List[Dict[str, Any]
-                             ] = feature["properties"]["timeseries"]
+            timeseries: List[Dict[str, Any]] = feature["properties"]["timeseries"]
             for ts_props in timeseries:
                 features.extend(
                     GeoJSONReader.build_features(
                         point=point,
                         properties=ts_props,
                         split_properties=split_properties,
-                        name=name
+                        name=name,
                     )
                 )
         else:
@@ -172,7 +182,7 @@ class GeoJSONReader(datatypes.FieldReader):
                     point=point,
                     properties=feature["properties"],
                     split_properties=split_properties,
-                    name=name
+                    name=name,
                 )
             )
 
@@ -190,21 +200,19 @@ class GeoJSONReader(datatypes.FieldReader):
                 if content["type"] == "FeatureCollection":
                     self.log.info("FeatureCollection found!")
                     for ft in content["features"]:
-                        features.extend(
-                            GeoJSONReader.extract_features(feature=ft)
-                        )
+                        features.extend(GeoJSONReader.extract_features(feature=ft))
                         features_grouped.extend(
                             GeoJSONReader.extract_features(
-                                feature=ft, split_properties=False)
+                                feature=ft, split_properties=False
+                            )
                         )
                 elif content["type"] == "Feature":
                     self.log.info("Feature found!")
-                    features.extend(
-                        GeoJSONReader.extract_features(feature=content)
-                    )
+                    features.extend(GeoJSONReader.extract_features(feature=content))
                     features_grouped.extend(
                         GeoJSONReader.extract_features(
-                            feature=content, split_properties=False)
+                            feature=content, split_properties=False
+                        )
                     )
                 else:
                     self.log.error("Unsupported type: %s", content["type"])
@@ -216,8 +224,7 @@ class GeoJSONReader(datatypes.FieldReader):
         features_by_field: Dict[str, Dict[str, List[geojson.Feature]]] = {}
         skip_fields = {"time", "name"}
         for feature in features:
-            field_name = set(feature["properties"].keys()
-                             ).difference(skip_fields).pop()
+            field_name = set(feature["properties"].keys()).difference(skip_fields).pop()
             time = feature["properties"]["time"]
 
             # feature by field
@@ -244,10 +251,16 @@ class GeoJSONReader(datatypes.FieldReader):
 
         for field_name, field_value in features_by_field.items():
             for time, time_collection in field_value.items():
-                feature_collection = geojson.FeatureCollection(
-                    features=time_collection)
-                fields.append(GeoJSONField(
-                    self.context, self.path, featureCollection=feature_collection, name=field_name, time=time))
+                feature_collection = geojson.FeatureCollection(features=time_collection)
+                fields.append(
+                    GeoJSONField(
+                        self.context,
+                        self.path,
+                        featureCollection=feature_collection,
+                        name=field_name,
+                        time=time,
+                    )
+                )
 
         # extract layer name from file name
         # name = os.path.basename(self.path)

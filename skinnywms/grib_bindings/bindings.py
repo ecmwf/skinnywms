@@ -9,11 +9,11 @@
 
 import ctypes
 import ctypes.util
-import sys
 import os
+import sys
+from functools import partial
 
 import numpy as np
-from functools import partial
 
 try:
     import ecmwflibs
@@ -509,28 +509,35 @@ def grib_values(handle, name="values"):
 
     return array
 
-def grib_get_metadata(handle, names:list=['centre',
-                                        'channel',
-                                        'level',
-                                        'levelist',
-                                        'levtype',
-                                        'long_name',
-                                        'originatingCentre',
-                                        'param',
-                                        'paramId',
-                                        'parameterUnits',
-                                        'shortName',
-                                        'standard_name',
-                                        'type',
-                                        'units']):
+
+def grib_get_metadata(
+    handle,
+    names: list = [
+        "centre",
+        "channel",
+        "level",
+        "levelist",
+        "levtype",
+        "long_name",
+        "originatingCentre",
+        "param",
+        "paramId",
+        "parameterUnits",
+        "shortName",
+        "standard_name",
+        "type",
+        "units",
+    ],
+):
     ret = {}
     for name in names:
         # TODO: the names list should be retrieved directly from magics, not hardcoded
         try:
             ret[name] = grib_get(handle, name)
         except:
-            pass # field name missing in grib file
+            pass  # field name missing in grib file
     return ret
+
 
 def grib_pl_array(handle, name="pl"):
     return grib_get_long_array(handle, name)
