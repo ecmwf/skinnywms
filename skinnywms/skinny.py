@@ -1,6 +1,5 @@
 from skinnywms.wmssvr import application
 
-
 __all__ = [
     "main",
 ]

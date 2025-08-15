@@ -6,17 +6,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-from skinnywms.server import WMSServer
-from skinnywms import datatypes
-import logging
 import datetime
+import logging
 import os
-
 from contextlib import closing
-from dateutil import parser
 from itertools import product
 
 import xarray as xr
+from dateutil import parser
+
+from skinnywms import datatypes
+from skinnywms.server import WMSServer
 
 
 def as_datetime(self, time):
@@ -26,8 +26,10 @@ def as_datetime(self, time):
 
     # Lose the nano-seconds.... always assume times in UTC
     try:
-        return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-    except:    
+        return datetime.datetime.strptime(str(time)[:19], "%Y-%m-%dT%H:%M:%S").replace(
+            tzinfo=datetime.timezone.utc
+        )
+    except:
         return parser.parse(str(time)[:19]).replace(tzinfo=datetime.timezone.utc)
 
 
@@ -62,11 +64,14 @@ class Slice:
 class TimeSlice(Slice):
     pass
 
+
 class PressureLevelSlice(Slice):
     pass
 
+
 class ModelLevelSlice(Slice):
     pass
+
 
 class Coordinate:
     def __init__(self, variable, info):
@@ -111,12 +116,14 @@ class ModelLevelCoordinate(Coordinate):
     is_dimension = True
     convert = as_level
 
+
 class PressureLevelCoordinate(Coordinate):
     # This class is just in case we want to specialise
     # 'level', othewise, it is the same as OtherCoordinate
     slice_class = PressureLevelSlice
     is_dimension = True
     convert = as_level
+
 
 class OtherCoordinate(Coordinate):
     slice_class = Slice
@@ -135,7 +142,7 @@ class NetCDFField(datatypes.Field):
         self.slices = slices
 
         self.shortName = self.variable
-        self.companion = None # not yet supported for netCDF
+        self.companion = None  # not yet supported for netCDF
 
         self.longName = getattr(
             ds[self.variable],
@@ -186,12 +193,18 @@ class NetCDFField(datatypes.Field):
     @property
     def name(self) -> str:
         # override getter for name
-        nameSuffix = "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+        nameSuffix = (
+            "" if self.levelist is None else "@%s_%s" % (self.levtype, self.levelist)
+        )
 
         if self.companion is None:
             return "%s%s" % (self.shortName, nameSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.shortName,
+                self.vcomponent.shortName,
+                nameSuffix,
+            )
 
     @property
     def group_name(self) -> str:
@@ -201,17 +214,27 @@ class NetCDFField(datatypes.Field):
         if self.companion is None:
             return "%s%s" % (self.shortName, nameSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.shortName, self.vcomponent.shortName, nameSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.shortName,
+                self.vcomponent.shortName,
+                nameSuffix,
+            )
 
     @property
     def title(self) -> str:
         # override getter for title
-        titleSuffix = "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+        titleSuffix = (
+            "" if self.levelist is None else " @ %s_%s" % (self.levtype, self.levelist)
+        )
 
         if self.companion is None:
             return "%s%s" % (self.longName, titleSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
+            return "%s/%s%s" % (
+                self.ucomponent.longName,
+                self.vcomponent.longName,
+                titleSuffix,
+            )
 
     @property
     def group_title(self) -> str:
@@ -221,8 +244,11 @@ class NetCDFField(datatypes.Field):
         if self.companion is None:
             return "%s%s" % (self.longName, titleSuffix)
         else:
-            return "%s/%s%s" % (self.ucomponent.longName, self.vcomponent.longName,titleSuffix)
-
+            return "%s/%s%s" % (
+                self.ucomponent.longName,
+                self.vcomponent.longName,
+                titleSuffix,
+            )
 
     def render(self, context, driver, style, legend={}):
 
@@ -268,13 +294,12 @@ class NetCDFField(datatypes.Field):
 
 
 class NetCDFReader(datatypes.FieldReader):
-
     """Get WMS layers from a NetCDF file."""
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, context:WMSServer, path:str):
-        super(NetCDFReader,self).__init__(context=context, path=path)
+    def __init__(self, context: WMSServer, path: str):
+        super(NetCDFReader, self).__init__(context=context, path=path)
         self.log.info("__init__")
 
     def get_fields(self):
@@ -346,15 +371,13 @@ class NetCDFReader(datatypes.FieldReader):
                 elif standard_name in (
                     "air_pressure",
                     "altitude",
-                    "plev", # era5 pressure levels
-                    "isobaricInhPa", 
+                    "plev",  # era5 pressure levels
+                    "isobaricInhPa",
                 ):  # or axis == 'Z':
                     # see also https://cfconventions.org/Data/cf-standard-names/current/build/cf-standard-name-table.html
                     coordinates.append(PressureLevelCoordinate(c, coord in info))
                     use = True
-                elif standard_name in (
-                    "model_level_number",
-                ):  # or axis == 'Z':
+                elif standard_name in ("model_level_number",):  # or axis == 'Z':
                     coordinates.append(ModelLevelCoordinate(c, coord in info))
                     use = True
 
@@ -369,7 +392,7 @@ class NetCDFReader(datatypes.FieldReader):
 
                 slices = []
                 for value, coordinate in zip(values, coordinates):
-                    self.log.info("COORDINATE %s:%s" %(coordinate, value))
+                    self.log.info("COORDINATE %s:%s" % (coordinate, value))
                     slices.append(coordinate.make_slice(value))
 
                 fields.append(NetCDFField(self.context, self.path, ds, name, slices))

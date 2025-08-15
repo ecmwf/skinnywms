@@ -6,21 +6,19 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+import json
 import logging
 import mimetypes
 import os
-import threading
 import pprint
-import json
-
-from numpy.lib.utils import deprecate
+import threading
+from pathlib import Path
 
 from Magics import macro
 
 from skinnywms import datatypes, errors
 from skinnywms.fields.GRIBField import GRIBField
 from skinnywms.grib_bindings.GribField import GribField
-
 
 __all__ = [
     "Plotter",
@@ -31,6 +29,8 @@ mimetypes.add_type("application/x-grib", ".grib", strict=False)
 mimetypes.add_type("application/x-netcdf", ".nc", strict=False)
 mimetypes.add_type("application/x-netcdf", ".nc4", strict=False)
 
+MAGICS_TEMPLATE_PATH = Path(__file__).parent.parent / "templates"
+OBS_TEMPLATE_PATH = MAGICS_TEMPLATE_PATH / "obs.template"
 
 MAGICS_OUTPUT_TYPES = {
     "image/png": "png",
@@ -88,36 +88,39 @@ class StaticLayer(datatypes.Layer):
     def render(self, context, driver, style):
         return [
             driver.mcoast(
-                map_coastline_colour            = "RGB(0.8,0.8,0.8,0.5)",
-                map_coastline_resolution        = "medium",
-                map_coastline_thickness         = 1,
-                map_coastline_land_shade        = "on",
-                map_coastline_land_shade_colour = "RGB(0.25,0.25,0.25)",
-                map_coastline_sea_shade         = "on",
-                map_coastline_sea_shade_colour  = "black",
-                map_grid                        = "off"
+                map_coastline_colour="RGB(0.8,0.8,0.8,0.5)",
+                map_coastline_resolution="medium",
+                map_coastline_thickness=1,
+                map_coastline_land_shade="on",
+                map_coastline_land_shade_colour="RGB(0.25,0.25,0.25)",
+                map_coastline_sea_shade="on",
+                map_coastline_sea_shade_colour="black",
+                map_grid="off",
             )
         ]
 
     def __repr__(self):
         return "StaticLayer[%s]" % (self.name,)
+
+
 class Cream(StaticLayer):
     def render(self, context, driver, style):
         return [
-             driver.mcoast(
-                map_coastline_colour            = "charcoal",
-                map_coastline_resolution        = "medium",
-                map_coastline_thickness         = 1,
-                map_coastline_land_shade        = "on",
-                map_coastline_land_shade_colour = "cream",
-                map_coastline_sea_shade         = "on",
-                map_coastline_sea_shade_colour  = "white",
-                map_grid                        = "off"
+            driver.mcoast(
+                map_coastline_colour="charcoal",
+                map_coastline_resolution="medium",
+                map_coastline_thickness=1,
+                map_coastline_land_shade="on",
+                map_coastline_land_shade_colour="cream",
+                map_coastline_sea_shade="on",
+                map_coastline_sea_shade_colour="white",
+                map_grid="off",
             )
         ]
 
     def __repr__(self):
         return "ForegroundLayer[%s]" % (self.name,)
+
 
 class Foreground(StaticLayer):
     def render(self, context, driver, style):
@@ -125,27 +128,43 @@ class Foreground(StaticLayer):
             driver.mcoast(
                 map_coastline_colour="charcoal",
                 map_coastline_resolution="medium",
-                map_grid = "off"
+                map_grid="off",
             )
         ]
 
     def __repr__(self):
         return "ForegroundLayer[%s]" % (self.name,)
 
+
+class LightForeground(StaticLayer):
+    def render(self, context, driver, style):
+        return [
+            driver.mcoast(
+                map_coastline_colour="white",
+                map_coastline_resolution="medium",
+                map_grid="off",
+            )
+        ]
+
+    def __repr__(self):
+        return "ForegroundLayer[%s]" % (self.name,)
+
+
 class Boundaries(StaticLayer):
     def render(self, context, driver, style):
         return [
             driver.mcoast(
-                map_coastline ="off",
+                map_coastline="off",
                 map_coastline_resolution="medium",
-                map_boundaries = "on",
-                map_boundaries_colour = "grey",
+                map_boundaries="on",
+                map_boundaries_colour="grey",
                 map_grid=False,
             )
         ]
 
     def __repr__(self):
         return "ForegroundLayer[%s]" % (self.name,)
+
 
 class OceanLayer(StaticLayer):
     def render(self, context, driver, style):
@@ -183,6 +202,25 @@ class USLayer(StaticLayer):
         return "USLayer[%s]" % (self.name,)
 
 
+class LightUSLayer(StaticLayer):
+    def render(self, context, driver, style):
+        return [
+            driver.mcoast(
+                map_grid="off",
+                map_boundaries="on",
+                map_administrative_boundaries="on",
+                map_administrative_boundaries_countries_list=["USA"],
+                map_label="off",
+                map_coastline_colour="none",
+                map_administrative_boundaries_colour="grey",
+                map_coastline_resolution="medium",
+            )
+        ]
+
+    def __repr__(self):
+        return "USLayer[%s]" % (self.name,)
+
+
 class UserBaseLayer(StaticLayer):
     def render(self, context, driver, style):
         return [
@@ -208,8 +246,17 @@ class Plotter(datatypes.Plotter):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, baselayer=None, styles=None, driver=macro):
+    def __init__(
+        self,
+        baselayer=None,
+        styles=None,
+        driver=macro,
+        dark_mode=False,
+        omit_default_layers=False,
+    ):
         self.driver = driver
+        self.dark_mode = dark_mode
+        self.legend_text_colour = "white" if dark_mode else "charcoal"
 
         self.wmscrs = driver.wmscrs()
 
@@ -219,14 +266,29 @@ class Plotter(datatypes.Plotter):
             styles = {}
         self._styles = styles
 
-        layers = [
-            Foreground("foreground", title="Foreground", zindex=99999),
-            StaticLayer("background", title="Dark Background", zindex=-99999),
-            Cream("cream", title="Cream Background", zindex=-99999),
-            Boundaries("boundaries", title="Boundaries", zindex=99999),
-            OceanLayer("oceans", title="Oceans", zindex=99999),
-            USLayer("us-states", title="US States", zindex=99999),
-        ]
+        layers = (
+            (
+                [
+                    LightForeground("foreground", title="Foreground", zindex=99999),
+                    StaticLayer(
+                        "background", title="Default Background", zindex=-99999
+                    ),
+                    Boundaries("boundaries", title="Boundaries", zindex=99999),
+                    OceanLayer("oceans", title="Oceans", zindex=99999),
+                    LightUSLayer("us-states", title="US States", zindex=99999),
+                ]
+                if dark_mode
+                else [
+                    Foreground("foreground", title="Foreground", zindex=99999),
+                    Cream("background", title="Default Background", zindex=-99999),
+                    Boundaries("boundaries", title="Boundaries", zindex=99999),
+                    OceanLayer("oceans", title="Oceans", zindex=99999),
+                    USLayer("us-states", title="US States", zindex=99999),
+                ]
+            )
+            if not omit_default_layers
+            else []
+        )
 
         if baselayer:
             name = os.path.basename(baselayer)
@@ -298,7 +360,7 @@ class Plotter(datatypes.Plotter):
             "page_frame": "off",
             "skinny_mode": "on",
             "page_id_line": "off",
-            "subpage_gutter_percentage": 20., 
+            "subpage_gutter_percentage": 20.0,
         }
 
         # add extra settings for polar stereographic projection when
@@ -413,7 +475,17 @@ class Plotter(datatypes.Plotter):
             return format, output_fname
 
     def legend(
-        self, context, output, format, height, layer, style, version, width, transparent, legend_title_position_ratio
+        self,
+        context,
+        output,
+        format,
+        height,
+        layer,
+        style,
+        version,
+        width,
+        transparent,
+        legend_title_position_ratio,
     ):
 
         try:
@@ -448,7 +520,7 @@ class Plotter(datatypes.Plotter):
                     subpage_y_length=height_cm,
                     subpage_x_position=0.0,
                     subpage_y_position=0.0,
-                    subpage_gutter_percentage = 20., 
+                    subpage_gutter_percentage=20.0,
                     output_width=width,
                     page_frame="off",
                     page_id_line="off",
@@ -486,7 +558,7 @@ class Plotter(datatypes.Plotter):
                 legend_box_y_length=height_cm,
                 legend_box_blanking=not transparent,
                 legend_text_font_size=legend_font_size,
-                legend_text_colour="white",
+                legend_text_colour=self.legend_text_colour,  # will be white in dark mode
                 legend_title_position_ratio=legend_title_position_ratio,
             )
 
@@ -542,9 +614,10 @@ class Styler(datatypes.Styler):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, user_style:str=None, driver=macro):
+    def __init__(self, user_style: str = None, driver=macro, dark_mode=False):
         self.user_style = None
         self.driver = driver
+        self.dark_mode = dark_mode
         if user_style:
             try:
                 with open(user_style, "r") as f:
@@ -573,16 +646,14 @@ class Styler(datatypes.Styler):
 
         return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
 
-    def grib_styles_from_meta(self, field:GRIBField):
+    def grib_styles_from_meta(self, field: GRIBField):
         if self.user_style:
             return [MagicsWebStyle(self.user_style["name"])]
 
         with LOCK:
             try:
                 styles = self.driver.wmsstyles(
-                    self.driver.minput(
-                        input_metadata = field.metadata
-                    )
+                    self.driver.minput(input_metadata=field.metadata)
                 )
                 # Looks like they are provided in reverse order
             except Exception as e:
@@ -591,31 +662,38 @@ class Styler(datatypes.Styler):
 
         return [MagicsWebStyle(**s) for s in styles.get("styles", [])]
 
-    @deprecate
-    def grib_styles(self, field:GRIBField, grib:GribField, path:str, byte_offset:int, byte_offset_companion:int=None):
+    def grib_styles(
+        self,
+        field: GRIBField,
+        grib: GribField,
+        path: str,
+        byte_offset: int,
+        byte_offset_companion: int = None,
+    ):
+        """Deprecated: Use grib_styles_from_meta instead."""
         if self.user_style:
             return [MagicsWebStyle(self.user_style["name"])]
 
         with LOCK:
             try:
                 if byte_offset_companion:
-                    
+
                     styles = self.driver.wmsstyles(
                         self.driver.mgrib(
                             grib_input_file_name=path,
-                            grib_wind_position_1=byte_offset, 
+                            grib_wind_position_1=byte_offset,
                             grib_wind_position_2=byte_offset_companion,
                             grib_file_address_mode="byte_offset",
-                            grib_wind_style=True
+                            grib_wind_style=True,
                         )
                     )
 
                 else:
                     styles = self.driver.wmsstyles(
                         self.driver.mgrib(
-                            grib_input_file_name=path, 
-                            grib_field_position=grib.byte_offset, 
-                            grib_file_address_mode="byte_offset"
+                            grib_input_file_name=path,
+                            grib_field_position=grib.byte_offset,
+                            grib_file_address_mode="byte_offset",
                         )
                     )
                 # Looks like they are provided in reverse order
@@ -639,7 +717,6 @@ class Styler(datatypes.Styler):
             contour_style_name=style.name,
         )
 
-
     def winds(self, field, driver, style, legend={}):
 
         if self.user_style:
@@ -652,93 +729,139 @@ class Styler(datatypes.Styler):
             wind_style_name=style.name,
         )
 
-    
     def symbol(self, field, driver, style, legend={}):
+
+        obs_line_color = "white" if self.dark_mode else "charcoal"
 
         # print ( "FILE-> ", style)
         styles = {
-            "cloud_area_fraction" : driver.msymb(
-                symbol_advanced_table_height_method = "calculate",
-                symbol_advanced_table_height_min_value = 0.8,
-                symbol_advanced_table_height_max_value = 0.8,
-                symbol_type = "marker",
-                legend = "on",
-                symbol_table_mode = "advanced",
-                symbol_marker_mode = "name",
-                symbol_advanced_table_selection_type = "list",
-                symbol_advanced_table_colour_method = "list",
-                symbol_advanced_table_colour_list = ["#26001a",
-                            "#1d008a",
-                            "#113300",
-                            "#92003b",
-                            "#ff6e8f",
-                            "#e4bc00",
-                            "#ffb8e0",
-                            "#03fbec",
-                            "#b0ff95",
-                            "#e4f9ff"],
-                symbol_advanced_table_level_list = [0.0,0.1,12.5,25,37.5,50.0,62.5,75.0,87.5,100],
-                symbol_advanced_table_marker_name_list = ['N_0','N_1','N_2','N_3','N_4',
-                'N_5','N_6','N_7','N_8','N_9'],), 
-            "present_weather" : driver.mobs(
-                obs_template_file_name=os.getcwd() + "/skinnywms/templates/obs.template",
+            "cloud_area_fraction": driver.msymb(
+                symbol_advanced_table_height_method="calculate",
+                symbol_advanced_table_height_min_value=0.8,
+                symbol_advanced_table_height_max_value=0.8,
+                symbol_type="marker",
+                legend="on",
+                symbol_table_mode="advanced",
+                symbol_marker_mode="name",
+                symbol_advanced_table_selection_type="list",
+                symbol_advanced_table_colour_method="list",
+                symbol_advanced_table_colour_list=[
+                    "#26001a",
+                    "#1d008a",
+                    "#113300",
+                    "#92003b",
+                    "#ff6e8f",
+                    "#e4bc00",
+                    "#ffb8e0",
+                    "#03fbec",
+                    "#b0ff95",
+                    "#e4f9ff",
+                ],
+                symbol_advanced_table_level_list=[
+                    0.0,
+                    0.1,
+                    12.5,
+                    25,
+                    37.5,
+                    50.0,
+                    62.5,
+                    75.0,
+                    87.5,
+                    100,
+                ],
+                symbol_advanced_table_marker_name_list=[
+                    "N_0",
+                    "N_1",
+                    "N_2",
+                    "N_3",
+                    "N_4",
+                    "N_5",
+                    "N_6",
+                    "N_7",
+                    "N_8",
+                    "N_9",
+                ],
+            ),
+            "present_weather": driver.mobs(
+                obs_template_file_name=OBS_TEMPLATE_PATH.as_posix(),
                 obs_size=0.6,
                 obs_ring_size=0.2,
                 obs_distance_apart=1.0,
-                obs_present_weather_colour = "white"
+                obs_present_weather_colour=obs_line_color,
             ),
-            "station_model" : driver.mobs(
-                obs_template_file_name=os.getcwd() + "/skinnywms/templates/obs.template",
+            "station_model": driver.mobs(
+                obs_template_file_name=OBS_TEMPLATE_PATH.as_posix(),
                 obs_size=0.4,
                 obs_ring_size=0.2,
                 obs_distance_apart=1.0,
-                obs_present_weather_colour = "white",
-                obs_identification_colour = "white",
-                obs_station_ring_colour = "white",
-                obs_wind_colour = "white",
+                obs_present_weather_colour=obs_line_color,
+                obs_identification_colour=obs_line_color,
+                obs_station_ring_colour=obs_line_color,
+                obs_wind_colour=obs_line_color,
             ),
-            "thunderstorm_probability" : driver.msymb(
-                legend = "on",
-                symbol_type = "marker",
-                symbol_table_mode = "advanced",
-                symbol_advanced_table_selection_type = "interval",
-                symbol_advanced_table_interval = 10.,
-                symbol_advanced_table_colour_method = "list",
-                symbol_advanced_table_colour_list = ["RGB(0.7898,0.5906,0.6304)", "RGB(0.37,0.04564,0.1105)", "RGB(0.6481,0.02644,0.1404)",
-                "RGB(0.9942,0.02538,0.1384)", "RGB(0.9942,0.4408,0.01758)", "RGB(0.9902,0.6293,0.005859)",
-                "RGB(0.9961,0.8479,0.007828)", "RGB(0.9961,0.9796,0.007828)", "#ffff99"],
-                symbol_advanced_table_height_method = "list",
-                symbol_advanced_table_height_list = [0.2,0.4,0.6,0.8,1,1.2,1.4,1.6,1.8],
-                symbol_marker_index = 15 ),
-            "air_temperature": driver.msymb(legend = "off",
-                        symbol_type = "marker",
-                        symbol_table_mode = "advanced",
-                        symbol_advanced_table_selection_type = "interval",
-                        symbol_advanced_table_interval = 0.1,
-                        symbol_advanced_table_min_level_colour = "lavender",
-                        symbol_advanced_table_max_level_colour = "violet",
-                        symbol_advanced_table_colour_direction = "clockwise",
-                        symbol_advanced_table_height_method = "calculate",
-                        symbol_advanced_table_height_min_value = 3.,
-                        symbol_advanced_table_height_max_value = 3.,
-                        symbol_marker_mode = "name",
-                        symbol_advanced_table_marker_name_list = ["duck"])
-        
-            }
-        
-        return styles.get(style, driver.msymb(legend = "off",
-                        symbol_type = "marker",
-                        symbol_table_mode = "advanced",
-                        symbol_advanced_table_selection_type = "interval",
-                        symbol_advanced_table_interval = 0.1,
-                        symbol_advanced_table_min_level_colour = "lavender",
-                        symbol_advanced_table_max_level_colour = "violet",
-                        symbol_advanced_table_colour_direction = "clockwise",
-                        symbol_advanced_table_height_method = "calculate",
-                        symbol_advanced_table_height_min_value = 0.5,
-                        symbol_advanced_table_height_max_value = 0.5,
-                        symbol_marker_index = 15))
+            "thunderstorm_probability": driver.msymb(
+                legend="on",
+                symbol_type="marker",
+                symbol_table_mode="advanced",
+                symbol_advanced_table_selection_type="interval",
+                symbol_advanced_table_interval=10.0,
+                symbol_advanced_table_colour_method="list",
+                symbol_advanced_table_colour_list=[
+                    "RGB(0.7898,0.5906,0.6304)",
+                    "RGB(0.37,0.04564,0.1105)",
+                    "RGB(0.6481,0.02644,0.1404)",
+                    "RGB(0.9942,0.02538,0.1384)",
+                    "RGB(0.9942,0.4408,0.01758)",
+                    "RGB(0.9902,0.6293,0.005859)",
+                    "RGB(0.9961,0.8479,0.007828)",
+                    "RGB(0.9961,0.9796,0.007828)",
+                    "#ffff99",
+                ],
+                symbol_advanced_table_height_method="list",
+                symbol_advanced_table_height_list=[
+                    0.2,
+                    0.4,
+                    0.6,
+                    0.8,
+                    1,
+                    1.2,
+                    1.4,
+                    1.6,
+                    1.8,
+                ],
+                symbol_marker_index=15,
+            ),
+            "air_temperature": driver.msymb(
+                legend="off",
+                symbol_type="marker",
+                symbol_table_mode="advanced",
+                symbol_advanced_table_selection_type="interval",
+                symbol_advanced_table_interval=0.1,
+                symbol_advanced_table_min_level_colour="lavender",
+                symbol_advanced_table_max_level_colour="violet",
+                symbol_advanced_table_colour_direction="clockwise",
+                symbol_advanced_table_height_method="calculate",
+                symbol_advanced_table_height_min_value=3.0,
+                symbol_advanced_table_height_max_value=3.0,
+                symbol_marker_mode="name",
+                symbol_advanced_table_marker_name_list=["duck"],
+            ),
+        }
 
-
-        
-
+        return styles.get(
+            style,
+            driver.msymb(
+                legend="off",
+                symbol_type="marker",
+                symbol_table_mode="advanced",
+                symbol_advanced_table_selection_type="interval",
+                symbol_advanced_table_interval=0.1,
+                symbol_advanced_table_min_level_colour="lavender",
+                symbol_advanced_table_max_level_colour="violet",
+                symbol_advanced_table_colour_direction="clockwise",
+                symbol_advanced_table_height_method="calculate",
+                symbol_advanced_table_height_min_value=0.5,
+                symbol_advanced_table_height_max_value=0.5,
+                symbol_marker_index=15,
+            ),
+        )

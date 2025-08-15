@@ -1,20 +1,22 @@
 # Build image
 # Use slim python 3 image as base
-ARG PYTHON_IMAGE=python:3.8-slim-buster
+ARG PYTHON_IMAGE=python:3.11-slim-bookworm
 FROM ${PYTHON_IMAGE}
 
-# Install UWSGI
+# Install UWSGI and ecmwflibs dependencies
+# libexpat1 and libglib2.0-0 are needed for ecmwflibs
 RUN set -ex \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        gcc \
-        build-essential \
-        libglib2.0 \
-    && rm -rf /var/lib/apt/lists/* \
+    gcc \
+    build-essential \
+    libexpat1 \
+    libglib2.0-0 \
     && pip install uwsgi \
     && apt-get purge -y --auto-remove \
-        gcc \
-        build-essential
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install skinnywms
 RUN set -eux \
@@ -33,13 +35,13 @@ ENV SKINNYWMS_UWSGI_WORKERS=4
 
 # UWSGI entrypoint
 CMD uwsgi \
-        --http ${SKINNYWMS_HOST}:${SKINNYWMS_PORT} \
-        --master \
-        --process ${SKINNYWMS_UWSGI_WORKERS} \
-        --mount ${SKINNYWMS_MOUNT}=skinnywms.wmssvr:application \
-        --static-map ${SKINNYWMS_MOUNT}static/=/app/skinnywms/skinnywms/static/ \
-        --manage-script-name \
-        --uid nobody
+    --http ${SKINNYWMS_HOST}:${SKINNYWMS_PORT} \
+    --master \
+    --process ${SKINNYWMS_UWSGI_WORKERS} \
+    --mount ${SKINNYWMS_MOUNT}=skinnywms.wmssvr:application \
+    --static-map ${SKINNYWMS_MOUNT}static/=/app/skinnywms/skinnywms/static/ \
+    --manage-script-name \
+    --uid nobody
 
 # demo application will listen at http://0.0.0.0:5000
 EXPOSE 5000/tcp
@@ -60,11 +62,11 @@ ARG VCS_URL
 # --build-arg VERSION=`git tag`, e.g. '0.2.1'
 ARG VERSION
 LABEL org.label-schema.build-date=$BUILD_DATE \
-        org.label-schema.name="SkinnyWMS" \
-        org.label-schema.description="The SkinnyWMS is a small WMS server that will help you to visualise your NetCDF and Grib Data." \
-        org.label-schema.url="https://confluence.ecmwf.int/display/MAGP/Skinny+WMS" \
-        org.label-schema.vcs-ref=$VCS_REF \
-        org.label-schema.vcs-url=$VCS_URL \
-        org.label-schema.vendor="ECMWF - European Centre for Medium-Range Weather Forecasts" \
-        org.label-schema.version=$VERSION \
-        org.label-schema.schema-version="1.0"
+    org.label-schema.name="SkinnyWMS" \
+    org.label-schema.description="The SkinnyWMS is a small WMS server that will help you to visualise your NetCDF and Grib Data." \
+    org.label-schema.url="https://confluence.ecmwf.int/display/MAGP/Skinny+WMS" \
+    org.label-schema.vcs-ref=$VCS_REF \
+    org.label-schema.vcs-url=$VCS_URL \
+    org.label-schema.vendor="ECMWF - European Centre for Medium-Range Weather Forecasts" \
+    org.label-schema.version=$VERSION \
+    org.label-schema.schema-version="1.0"
