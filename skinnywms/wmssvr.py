@@ -135,7 +135,7 @@ server = WMSServer(
     Availability(args.path, group_dimensions=group_dimensions),
     Plotter(args.baselayer, dark_mode=dark_mode_enabled,
             omit_default_layers=omit_default_layers),
-    Styler(args.user_style)
+    Styler(args.user_style, dark_mode=dark_mode_enabled),
 )
 
 
