@@ -9,3 +9,4 @@ meta.xml
 venv/
 .venv/
 skinnywms/testdata/*/*
+.DS_Store
