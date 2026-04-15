@@ -243,8 +243,11 @@ GRID_TYPES = {
     "regular_gg": RegularGG(),
     "reduced_ll": ReducedLL(),
     "reduced_gg": ReducedGG(),
-    "rotated_ll": RegularLL(),  # For now, we do not  make use of this information .
+    # For now, we do not  make use of this information .
+    "rotated_ll": RegularLL(),
     "lambert": RegularLL(),
+    # For now, we do not  make use of this information.
+    "space_view": RegularLL(),
 }
 
 
@@ -289,7 +292,7 @@ LEVEL_TYPE_CODES = {
     1: SingleLevel(),  # 1 sfc Ground or water surface
     8: SingleLevel(),  # 8 sfc Nominal top of the atmosphere
     100: PressureLevel(),  # 100 pl Isobaric surface (Pa)
-    102: SingleLevel(),  #  Specific altitude above mean sea level (m)
+    102: SingleLevel(),  # Specific altitude above mean sea level (m)
     103: SingleLevel(),  # 103 sfc Specified height level above ground (m)
     106: SingleLevel(),  # 106 sfc Depth below land surface (m)
     111: ModelLevel(),  # 111 ml Eta level
@@ -316,12 +319,15 @@ class GribField(object):
             self._grid = GRID_TYPES[self.gridType]
         except KeyError:
             raise Exception(
-                "Unsupported grid type '{}' in grib {}".format(self.gridType, path)
+                "Unsupported grid type '{}' in grib {}".format(
+                    self.gridType, path)
             )
 
         try:
             # try mapping by name
-            if self.levtype in LEVEL_TYPES:
+            if not hasattr(self, "levtype"):
+                self._levtype = LEVEL_TYPE_CODES[1] # default to surface if not specified
+            elif self.levtype in LEVEL_TYPES:
                 self._levtype = LEVEL_TYPES[self.levtype]
             else:
                 # try mapping by code
@@ -329,7 +335,8 @@ class GribField(object):
                 self._levtype = LEVEL_TYPE_CODES[levtype_code]
         except KeyError:
             raise Exception(
-                "Unsupported level type '{}' in grib {}".format(self.levtype, path)
+                "Unsupported level type '{}' in grib {}".format(
+                    self.levtype, path)
             )
 
     @property
@@ -372,7 +379,8 @@ class GribField(object):
     def base_date(self):
         date, time = self.date, self.time
         return datetime.datetime(
-            date // 10000, (date % 10000) // 100, date % 100, time // 100, time % 100, 0
+            date // 10000, (date %
+                            10000) // 100, date % 100, time // 100, time % 100, 0
         )
 
     @property
@@ -481,5 +489,6 @@ class GribField(object):
                 units="1", standard_name="realization", long_name="Ensemble number"
             )
 
-        self._levtype.coordinates(self, coords, combine_order, attributes, dims)
+        self._levtype.coordinates(
+            self, coords, combine_order, attributes, dims)
         self._grid.coordinates(self, coords, combine_order, attributes, dims)
