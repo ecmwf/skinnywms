@@ -1,5 +1,6 @@
 
 include skinnywms/templates/*
 include skinnywms/testdata/*
+recursive-include skinnywms/static *
 include demo.py
 include LICENSE.txt
