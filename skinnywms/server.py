@@ -63,9 +63,9 @@ class NoCaching:
 class WMSServer:
     def __init__(
         self,
-        availability: Availability,
-        plotter: Plotter,
-        styler: Styler,
+        availability: 'Availability',
+        plotter: 'Plotter',
+        styler: 'Styler',
         caching=NoCaching(),
     ):
 
@@ -213,7 +213,8 @@ class WMSServer:
 
         # Interpret the BBox
 
-        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x))(bbox)
+        bbox = bounding_box.get("{}_{}".format(
+            version, crs), (lambda x: x))(bbox)
 
         LOG.debug("->{}_{}".format(version, crs))
 
@@ -297,5 +298,6 @@ class WMSServer:
         }
 
         content_type = "text/xml"
-        content = render_template("getcapabilities_{}.xml".format(version), **variables)
+        content = render_template(
+            "getcapabilities_{}.xml".format(version), **variables)
         return content_type, content

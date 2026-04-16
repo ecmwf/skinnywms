@@ -134,14 +134,14 @@ class Field:
         self._group_title = value
 
     @property
-    def companion(self) -> Field:
+    def companion(self) -> 'Field':
         if self._companion:
             return self._companion
         else:
             return None
 
     @companion.setter
-    def companion(self, value: Field) -> Field:
+    def companion(self, value: 'Field') -> 'Field':
         self._companion = value
 
 
@@ -264,7 +264,8 @@ class TimeDimension(Dimension):
 
     def format_time(time: datetime.datetime) -> str:
         return (
-            time.astimezone(tz=datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+            time.astimezone(tz=datetime.timezone.utc).isoformat().replace(
+                "+00:00", "Z")
         )
 
     def format_extent(times: List[datetime.datetime]) -> str:
@@ -288,7 +289,8 @@ class TimeDimension(Dimension):
             prev_time = time
             if delta == last_delta and delta != datetime.timedelta(0):
                 extent[-1] = "/".join(
-                    [last_iso_ts, iso_ts, TimeDimension.format_iso_8601_duration(delta)]
+                    [last_iso_ts, iso_ts,
+                        TimeDimension.format_iso_8601_duration(delta)]
                 )
             else:
                 extent.append(iso_ts)
@@ -377,7 +379,8 @@ class DataLayer(Layer):
     def __init__(self, field: Field, group_dimensions: bool = False) -> None:
         self._group_dimensions = group_dimensions
         if self._group_dimensions:
-            super(DataLayer, self).__init__(field.group_name, field.group_title)
+            super(DataLayer, self).__init__(
+                field.group_name, field.group_title)
         else:
             super(DataLayer, self).__init__(field.name, field.title)
         assert field.time is None or (
@@ -626,7 +629,8 @@ class DataLayer(Layer):
     def as_dict(self):
         return dict(
             _class=self.__class__.__module__ + "." + self.__class__.__name__,
-            fields=[field.as_dict() for _, field in sorted(self._fields.items())],
+            fields=[field.as_dict()
+                    for _, field in sorted(self._fields.items())],
         )
 
 

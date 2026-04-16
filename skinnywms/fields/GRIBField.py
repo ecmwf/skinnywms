@@ -49,14 +49,15 @@ class GRIBField(datatypes.Field):
         self.context = context
 
         self.time = (
-            grib.valid_date
-            if grib.valid_date is None
+            None
+            if not hasattr(grib, "valid_date") or grib.valid_date is None
             else grib.valid_date.astimezone(tz=datetime.timezone.utc)
         )
 
-        self.levtype = grib.levtype
-        if self.levtype == "150":
-            self.levtype = "ml"  # DWD ICON hack
+        if hasattr(grib, "levtype") and grib.levtype is not None:
+            self.levtype = grib.levtype
+            if self.levtype == "150":
+                self.levtype = "ml"  # DWD ICON hack
 
         self.shortName = grib.shortName
         self.longName = grib.name

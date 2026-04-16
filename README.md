@@ -37,6 +37,18 @@ python demo.py --path /path/to/mydata
 skinny-wms --path /path/to/mydata
 ```
 
+To explicitly serve static assets from a custom location (mounted volume, local checkout, etc.):
+
+```bash
+skinny-wms --path /path/to/mydata --static-path /path/to/static
+```
+
+To check the installed version:
+
+```bash
+skinny-wms --version
+```
+
 * Or with uwsgi:
 
 ```bash
@@ -81,6 +93,8 @@ Now you can access the ```GetCapabilities`` document for your data at http://loc
 Additional Configuration
 ------------
 You can provide additional configuration, such as CORS configration, through environment variables. See [.env](.env) file for more details.
+
+For static assets, set `SKINNYWMS_STATIC_PATH` to a directory that contains `css`, `js` and related static files. This is equivalent to passing `--static-path` on the command line.
 
 
 Installation
