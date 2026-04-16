@@ -10,6 +10,7 @@ import argparse
 import logging
 import os
 
+from . import __version__
 from flask import (
     Flask,
     Response,
@@ -126,6 +127,12 @@ def _build_parser():
         "--static-path",
         default=_env_static_path(),
         help="Path to static assets directory served at /static. Defaults to SKINNYWMS_STATIC_PATH or packaged assets when available.",
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"skinnywms {__version__}",
     )
 
     return parser

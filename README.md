@@ -43,6 +43,12 @@ To explicitly serve static assets from a custom location (mounted volume, local 
 skinny-wms --path /path/to/mydata --static-path /path/to/static
 ```
 
+To check the installed version:
+
+```bash
+skinny-wms --version
+```
+
 * Or with uwsgi:
 
 ```bash
