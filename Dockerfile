@@ -1,9 +1,11 @@
 # Build image
 # Use slim python 3 image as base
-ARG PYTHON_IMAGE=python:3.11-slim-bookworm
+ARG PYTHON_IMAGE=python:3.14-slim-bookworm
 FROM ${PYTHON_IMAGE}
 
-# Install UWSGI and ecmwflibs dependencies
+ARG ECMWFLIBS_WHEEL=
+
+# Install gunicorn and ecmwflibs dependencies
 # libexpat1 and libglib2.0-0 are needed for ecmwflibs
 RUN set -ex \
     && apt-get update \
@@ -12,7 +14,7 @@ RUN set -ex \
     build-essential \
     libexpat1 \
     libglib2.0-0 \
-    && pip install uwsgi \
+    && pip install gunicorn \
     && apt-get purge -y --auto-remove \
     gcc \
     build-essential \
@@ -23,25 +25,21 @@ RUN set -eux \
     && mkdir -p /app/
 
 COPY . /app/skinnywms
+RUN set -eux \
+    && if [ -n "${ECMWFLIBS_WHEEL}" ]; then pip install "/app/skinnywms/${ECMWFLIBS_WHEEL}"; fi
 RUN pip install /app/skinnywms
 
 ENV SKINNYWMS_HOST=0.0.0.0
 ENV SKINNYWMS_PORT=5000
-ENV SKINNYWMS_MOUNT=/
 ENV SKINNYWMS_DATA_PATH=
-ENV SKINNYWMS_UWSGI_WORKERS=4
+ENV SKINNYWMS_GUNICORN_WORKERS=4
+ENV SKINNYWMS_GUNICORN_THREADS=8
+ENV SKINNYWMS_GUNICORN_TIMEOUT=120
 
 #USER nobody
 
-# UWSGI entrypoint
-CMD uwsgi \
-    --http ${SKINNYWMS_HOST}:${SKINNYWMS_PORT} \
-    --master \
-    --process ${SKINNYWMS_UWSGI_WORKERS} \
-    --mount ${SKINNYWMS_MOUNT}=skinnywms.wmssvr:application \
-    --static-map ${SKINNYWMS_MOUNT}static/=/app/skinnywms/skinnywms/static/ \
-    --manage-script-name \
-    --uid nobody
+# gunicorn entrypoint
+CMD ["sh", "-c", "gunicorn --bind ${SKINNYWMS_HOST}:${SKINNYWMS_PORT} --workers ${SKINNYWMS_GUNICORN_WORKERS} --worker-class gthread --threads ${SKINNYWMS_GUNICORN_THREADS} --timeout ${SKINNYWMS_GUNICORN_TIMEOUT} skinnywms.wmssvr:application"]
 
 # demo application will listen at http://0.0.0.0:5000
 EXPOSE 5000/tcp

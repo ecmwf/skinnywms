@@ -112,7 +112,7 @@
       <Layer queryable="1">
       {% else %}
       <Layer queryable="0">
-      {% endif %}>
+      {% endif %}
         <Name>{{ l.name }}</Name>
 	{% if l.title %}
         <Title>{{ l.title }}</Title>
