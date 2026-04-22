@@ -22,7 +22,7 @@ SkinnyWMS implements 3 of the WMS endpoints:
 
 Usage:
 -----
-There are 2 ways to start using it, they both will start a small Flask server.
+There are 2 ways to start using it. By default the command line starts a gunicorn server.
 Once running, a small leaflet client is accessible [http://127.0.0.1:5000/]
 
 * The demo:
@@ -37,6 +37,18 @@ python demo.py --path /path/to/mydata
 skinny-wms --path /path/to/mydata
 ```
 
+Use Flask explicitly (for development/debugging):
+
+```bash
+skinny-wms --path /path/to/mydata --server flask
+```
+
+You can also choose the backend through environment variable:
+
+```bash
+export SKINNYWMS_SERVER=gunicorn  # or flask
+```
+
 To explicitly serve static assets from a custom location (mounted volume, local checkout, etc.):
 
 ```bash
@@ -49,17 +61,17 @@ To check the installed version:
 skinny-wms --version
 ```
 
-* Or with uwsgi:
+* Or with gunicorn explicitly:
 
 ```bash
-uwsgi --http localhost:5000 --master --process 20 --mount /=skinnywms.wmssvr:application --env SKINNYWMS_DATA_PATH=/path/to/mydata
+gunicorn --bind localhost:5000 --workers 4 --worker-class gthread --threads 8 skinnywms.wmssvr:application
 ```
 
 
 Run using Docker
 ----------------
 
-By default the docker image will start the application using uwsgi and will load and display some demo data.
+By default the docker image starts the application using gunicorn and loads demo data.
 
 * Run the demo:
 ```bash
@@ -83,11 +95,11 @@ docker run --rm -p 5000:5000 -it \
     --env SKINNYWMS_DATA_PATH=/path/inside/the/container \
     --env SKINNYWMS_HOST=0.0.0.0 \
     --env SKINNYWMS_PORT=5000 \
-    --env SKINNYWMS_MOUNT=/mymodel/ \
-    --env SKINNYWMS_UWSGI_WORKERS=4 \
+    --env SKINNYWMS_GUNICORN_WORKERS=4 \
+    --env SKINNYWMS_GUNICORN_THREADS=8 \
       ecmwf/skinnywms
 ```
-Now you can access the ```GetCapabilities`` document for your data at http://localhost:5000/mymodel/wms?request=GetCapabilities
+Now you can access the ```GetCapabilities``` document for your data at http://localhost:5000/wms?request=GetCapabilities
 
 
 Additional Configuration
@@ -166,7 +178,47 @@ Make sure you have ``Docker`` and ``docker-compose`` installed. Then run:
 ```bash
 docker-compose up
 ```
-This will build a dev image and start up a local flask development server (with automatic reload on code changes) at http://localhost:5000 based on the configuration stored in [docker-compose.yml](./docker-compose.yml) and [.env](./.env) and by default try to load all GRIB and NetCDF data stored in [skinnywms/testdata](./skinnywms/testdata).
+This will build a dev image and start up a local gunicorn server at http://localhost:5000 based on the configuration stored in [docker-compose.yml](./docker-compose.yml) and [.env](./.env) and by default try to load all GRIB and NetCDF data stored in [skinnywms/testdata](./skinnywms/testdata).
+
+
+Benchmark WMS performance (GetMap + non-blocking GetCapabilities)
+-----------------------------------------
+
+Use the benchmark script to generate concurrent ``GetMap`` load while polling ``GetCapabilities`` asynchronously in parallel:
+
+```bash
+python scripts/benchmark_wms.py --base-url http://127.0.0.1:5000/wms --duration 30 --concurrency 8 --cap-interval 0.5
+```
+
+The script will:
+
+- discover a valid ``GetMap`` request from ``GetCapabilities``
+- report cold-start timings for the first ``GetCapabilities`` and first ``GetMap`` requests (useful for lazy-loading/indexing cost)
+- run concurrent ``GetMap`` requests for the specified duration
+- poll ``GetCapabilities`` in a non-blocking loop while load is running
+- report throughput and latency percentiles for both request types
+
+Export machine-readable results:
+
+```bash
+python scripts/benchmark_wms.py --base-url http://127.0.0.1:5000/wms --duration 30 --concurrency 8 --cap-interval 0.5 --output-json benchmark.json --output-csv benchmark.csv
+```
+
+To measure true lazy-loading startup cost, restart the service immediately before running the benchmark so the first ``GetCapabilities`` request is genuinely cold.
+
+You can also let the script do this automatically:
+
+```bash
+python scripts/benchmark_wms.py --base-url http://127.0.0.1:5000/wms --restart-command "docker compose restart skinnywms" --duration 30 --concurrency 8 --cap-interval 0.5 --output-json benchmark-cold.json --output-csv benchmark-cold.csv
+```
+
+By default, readiness is checked on the site root (``/``) to avoid touching ``GetCapabilities`` before cold-start timing is measured. You can override this with ``--ready-url`` if needed.
+
+Example with higher parallelism:
+
+```bash
+python scripts/benchmark_wms.py --base-url http://127.0.0.1:5000/wms --duration 60 --concurrency 16 --cap-interval 0.2
+```
 
 
 Contributing

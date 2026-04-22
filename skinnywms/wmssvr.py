@@ -64,6 +64,22 @@ def _env_static_path():
     return ""
 
 
+def _env_server():
+    server_name = os.environ.get("SKINNYWMS_SERVER", "gunicorn").strip().lower()
+    return server_name if server_name in ("gunicorn", "flask") else "gunicorn"
+
+
+def _env_int(name, default):
+    value = os.environ.get(name, "").strip()
+    if value == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        LOG.warning("Invalid integer for %s=%s, using default %s", name, value, default)
+        return default
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(description="Simple WMS server")
 
@@ -86,6 +102,30 @@ def _build_parser():
 
     parser.add_argument("--host", default="127.0.0.1", help="Hostname")
     parser.add_argument("--port", default=5000, help="Port number")
+    parser.add_argument(
+        "--server",
+        default=_env_server(),
+        choices=("gunicorn", "flask"),
+        help="WSGI server backend to run (default: gunicorn)",
+    )
+    parser.add_argument(
+        "--gunicorn-workers",
+        type=int,
+        default=_env_int("SKINNYWMS_GUNICORN_WORKERS", 4),
+        help="Number of gunicorn worker processes",
+    )
+    parser.add_argument(
+        "--gunicorn-threads",
+        type=int,
+        default=_env_int("SKINNYWMS_GUNICORN_THREADS", 8),
+        help="Number of threads per gunicorn worker",
+    )
+    parser.add_argument(
+        "--gunicorn-timeout",
+        type=int,
+        default=_env_int("SKINNYWMS_GUNICORN_TIMEOUT", 120),
+        help="Gunicorn worker timeout in seconds",
+    )
     parser.add_argument(
         "--baselayer",
         default="",
@@ -228,4 +268,40 @@ def execute():
     global server
     args = _parse_args()
     server = _apply_args(args)
-    application.run(port=args.port, host=args.host, debug=True, threaded=False)
+
+    if args.server == "flask":
+        application.run(port=args.port, host=args.host, debug=True, threaded=False)
+        return
+
+    try:
+        from gunicorn.app.base import BaseApplication
+    except ImportError as exc:
+        raise RuntimeError(
+            "Gunicorn is not installed. Install skinnywms with gunicorn dependencies or run with '--server flask'."
+        ) from exc
+
+    bind = f"{args.host}:{args.port}"
+    options = {
+        "bind": bind,
+        "workers": args.gunicorn_workers,
+        "worker_class": "gthread",
+        "threads": args.gunicorn_threads,
+        "timeout": args.gunicorn_timeout,
+    }
+
+    class SkinnyGunicornApplication(BaseApplication):
+        def __init__(self, app, gunicorn_options):
+            self.application = app
+            self.options = gunicorn_options
+            super().__init__()
+
+        def load_config(self):
+            for key, value in self.options.items():
+                if key in self.cfg.settings and value is not None:
+                    self.cfg.set(key, value)
+
+        def load(self):
+            return self.application
+
+    LOG.info("Starting gunicorn on %s with %s workers x %s threads", bind, args.gunicorn_workers, args.gunicorn_threads)
+    SkinnyGunicornApplication(application, options).run()

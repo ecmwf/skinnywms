@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 import logging
 import os
 import tempfile
+import threading
 
 from skinnywms import errors, protocol
 
@@ -79,6 +80,9 @@ class WMSServer:
         self.styler.set_context(self)
 
         self.caching = caching
+
+        self._capabilities_cache = {}
+        self._capabilities_cache_lock = threading.Lock()
 
         # For objects to store context
         self.stash = {}
@@ -277,6 +281,12 @@ class WMSServer:
 
     def get_capabilities(self, version, service_url, render_template):
 
+        cache_key = (version, service_url)
+        with self._capabilities_cache_lock:
+            cached = self._capabilities_cache.get(cache_key)
+        if cached is not None:
+            return "text/xml", cached
+
         layers = list(self.availability.layers())
         LOG.info("Layers are %s", layers)
 
@@ -300,4 +310,8 @@ class WMSServer:
         content_type = "text/xml"
         content = render_template(
             "getcapabilities_{}.xml".format(version), **variables)
+
+        with self._capabilities_cache_lock:
+            self._capabilities_cache[cache_key] = content
+
         return content_type, content
