@@ -97,7 +97,7 @@
       {% endif %}
 
       {% for crs in crss %}
-      <BoundingBox CRS="{{ crs.name }}" minx="{{ crs.min_x }}" miny="{{ crs.min_y }}" maxx="{{ crs.max_x }}" maxy="{{ crs.max_y }}"/>
+      <BoundingBox CRS="{{ crs.name }}" minx="{{ crs.w_lon }}" miny="{{ crs.s_lat }}" maxx="{{ crs.e_lon }}" maxy="{{ crs.n_lat }}"/>
       {% endfor %}
 
 

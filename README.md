@@ -20,6 +20,21 @@ SkinnyWMS implements 3 of the WMS endpoints:
 - **getLegendGraphic**: Return the legend.
 
 
+Coordinate reference systems:
+-----------------------------
+The CRSs advertised in the `GetCapabilities` document, and accepted by `GetMap`, are the ones listed by the `wmscrs()` function of the *Magics* python module. Each of them must also be supported by the installed *Magics* library, as the CRS name is passed to *Magics* as the map projection.
+
+| CRS | Projection |
+|-----|------------|
+| `EPSG:4326` | Geographic, WGS84 |
+| `EPSG:3857` | Web Mercator |
+| `EPSG:32661` | Universal Polar Stereographic, north |
+| `EPSG:32761` | Universal Polar Stereographic, south |
+| `EPSG:3035` | Lambert Azimuthal Equal Area, Europe |
+| `ESRI:54035` | Equal Earth, WGS84 (whole globe, equal area) |
+
+Equal Earth (`ESRI:54035`) needs versions of both the *Magics* library and the *Magics* python module that include it (it was added after Magics 4.16.3 and Magics python 1.5.8): the python module provides the CRS list, the library renders the projection. With an older python module the CRS is simply not advertised.
+
 Usage:
 -----
 There are 2 ways to start using it. By default the command line starts a gunicorn server.
