@@ -104,7 +104,12 @@
       {% endif %}
 
       {% for crs in crss %}
+      {% if crs.name == "EPSG:4326" %}
+      {# WMS 1.3.0: EPSG:4326 uses the latitude/longitude axis order #}
       <BoundingBox CRS="{{ crs.name }}" minx="{{ crs.s_lat }}" miny="{{ crs.w_lon }}" maxx="{{ crs.n_lat }}" maxy="{{ crs.e_lon }}"/>
+      {% else %}
+      <BoundingBox CRS="{{ crs.name }}" minx="{{ crs.w_lon }}" miny="{{ crs.s_lat }}" maxx="{{ crs.e_lon }}" maxy="{{ crs.n_lat }}"/>
+      {% endif %}
       {% endfor %}
 
       {% for l in layers %}
