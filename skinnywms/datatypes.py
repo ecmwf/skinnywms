@@ -29,6 +29,21 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 
+def _parse_time(value) -> datetime.datetime:
+    """Parses a WMS dimension value into a UTC datetime.
+
+    :param value: an ISO 8601 timestamp, e.g. '2019-01-01T12:00:00Z'
+    :return: the parsed time, in UTC
+    :rtype: datetime.datetime
+    """
+    try:
+        return datetime.datetime.strptime(
+            str(value)[:19], "%Y-%m-%dT%H:%M:%S"
+        ).replace(tzinfo=datetime.timezone.utc)
+    except Exception:
+        return parser.parse(str(value)[:19]).replace(tzinfo=datetime.timezone.utc)
+
+
 class CRS:
     def __init__(self, name, n_lat, s_lat, w_lon, e_lon):
         self.name = name
@@ -144,6 +159,20 @@ class Field:
     def companion(self, value: 'Field') -> 'Field':
         self._companion = value
 
+    @property
+    def reference_time(self) -> datetime.datetime:
+        """The time at which the forecast was initialised (the 'forecast run'),
+        or None for data that carries no such notion.
+
+        :return: the forecast reference time, in UTC, or None
+        :rtype: datetime.datetime
+        """
+        return getattr(self, "_reference_time", None)
+
+    @reference_time.setter
+    def reference_time(self, value: datetime.datetime) -> None:
+        self._reference_time = value
+
 
 class FieldReader(ABC):
     """Get WMS layers (fields) from a file."""
@@ -258,9 +287,14 @@ class TimeDimension(Dimension):
             return False
         else:
             return (
-                time1.astimezone(tz=datetime.timezone.utc)
-                - time2.astimezone(tz=datetime.timezone.utc)
-            ).total_seconds() < 1
+                abs(
+                    (
+                        time1.astimezone(tz=datetime.timezone.utc)
+                        - time2.astimezone(tz=datetime.timezone.utc)
+                    ).total_seconds()
+                )
+                < 1
+            )
 
     def format_time(time: datetime.datetime) -> str:
         return (
@@ -334,6 +368,23 @@ class TimeDimension(Dimension):
         return ret
 
 
+class ReferenceTimeDimension(TimeDimension):
+    """The forecast reference time dimension, i.e. the time at which the forecast
+    was initialised (the 'forecast run'), as described in
+    https://external.ogc.org/twiki_public/pub/MetOceanDWG/MetOceanWMSBPOnGoingDrafts/12-111r1_Best_Practices_for_WMS_with_Time_or_Elevation_dependent_data.pdf
+
+    <Dimension name="reference_time" units="ISO8601" default="2019-01-02T00:00:00Z" multipleValues="0" nearestValue="0">2019-01-01T00:00:00Z,2019-01-02T00:00:00Z</Dimension>
+
+    Clients request a value for it with the DIM_REFERENCE_TIME parameter.
+    """
+
+    def __init__(self, times: List[datetime.datetime]):
+        super(ReferenceTimeDimension, self).__init__(times)
+        self.name = "reference_time"
+        # unlike for the validity time, the most useful default run is the latest
+        self.default = TimeDimension.format_time(max(times))
+
+
 class ElevationDimension(Dimension):
     """An elevation dimension representing vertical 'levels' as described in
     https://external.ogc.org/twiki_public/pub/MetOceanDWG/MetOceanWMSBPOnGoingDrafts/12-111r1_Best_Practices_for_WMS_with_Time_or_Elevation_dependent_data.pdf
@@ -376,39 +427,78 @@ class DataLayer(Layer):
 
     # TODO: check the time-zone of the dates....
 
-    def __init__(self, field: Field, group_dimensions: bool = False) -> None:
+    def __init__(
+        self,
+        field: Field,
+        group_dimensions: bool = False,
+        reference_time_dimension: bool = False,
+    ) -> None:
         self._group_dimensions = group_dimensions
+        self._reference_time_dimension = reference_time_dimension
         if self._group_dimensions:
             super(DataLayer, self).__init__(
                 field.group_name, field.group_title)
         else:
             super(DataLayer, self).__init__(field.name, field.title)
+        self._first = field
+
+        self._fields = {self._key(field): field}
+
+        self._time_dimension_is_none = field.time is None
+        self._times = None
+
+    def _key(self, field: Field) -> tuple:
+        """Builds the key under which a field is stored, i.e. the combination of
+        dimension values that identifies it within this layer.
+
+        Unless the reference time dimension is enabled, the forecast reference time
+        is left out of the key, so that fields from different forecast runs sharing
+        a validity time and elevation overwrite one another, as they always have.
+
+        :param field: the field to build a key for
+        :type field: Field
+        :return: the (reference_time, time, elevation) key
+        :rtype: tuple
+        """
         assert field.time is None or (
             isinstance(field.time, datetime.datetime)
             and field.time == field.time.astimezone(tz=datetime.timezone.utc)
         )
         assert field.levelist is None or isinstance(field.levelist, int)
-        self._first = field
 
-        self._fields = {(field.time, field.levelist): field}
+        reference_time = (
+            field.reference_time if self._reference_time_dimension else None
+        )
 
-        self._time_dimension_is_none = field.time is None
-        self._times = None
+        return (reference_time, field.time, field.levelist)
+
+    @property
+    def reference_time_dimension(self) -> bool:
+        """If set to 'True', fields are additionally keyed on the forecast reference
+        time, and layers holding more than one forecast run advertise a
+        'reference_time' dimension.
+
+        :return: 'True' if the reference time dimension is enabled, else 'False'
+        :rtype: bool
+        """
+        return self._reference_time_dimension
 
     def select_nearest_available_time(
-        self, time: datetime.datetime
+        self, time: datetime.datetime, reference_time: datetime.datetime = None
     ) -> datetime.datetime:
         """Selects the nearest available time less than or equal to 'time'.
             If time is None, the earliest available time is returned.
 
         Args:
             time (datetime.datetime): the time
+            reference_time (datetime.datetime): if given, only times belonging to
+                that forecast run are considered
 
         Returns:
             datetime.datetime: the nearest available time less than or equal to 'time'
         """
         nearest_time = None
-        for atime in self.available_times():
+        for atime in self.available_times(reference_time=reference_time):
             if time is None:
                 return atime
 
@@ -418,25 +508,125 @@ class DataLayer(Layer):
                 return nearest_time
         return nearest_time
 
-    def available_times(self) -> List[datetime.datetime]:
+    def select_nearest_available_reference_time(
+        self, reference_time: datetime.datetime
+    ) -> datetime.datetime:
+        """Selects the nearest available reference time less than or equal to
+            'reference_time', i.e. never a more recent forecast run than the one
+            requested. If 'reference_time' is None, or predates every available
+            run, the latest available run is returned, which is also the one
+            advertised as the dimension default.
+
+        Args:
+            reference_time (datetime.datetime): the requested forecast run
+
+        Returns:
+            datetime.datetime: the selected reference time, or None if this layer
+                has no reference time at all
+        """
+        available = self.available_reference_times()
+        if len(available) < 1:
+            return None
+
+        if reference_time is None:
+            return available[-1]
+
+        nearest_reference_time = None
+        for aref in available:
+            if aref <= reference_time:
+                nearest_reference_time = aref
+            else:
+                break
+
+        if nearest_reference_time is None:
+            # the requested run predates everything we hold, fall back to the default
+            return available[-1]
+
+        return nearest_reference_time
+
+    def available_reference_times(self) -> List[datetime.datetime]:
+        """Returns a sorted list of all available forecast reference times. Returns an
+        empty list, if no reference time dimension is available.
+
+        Returns:
+            List[datetime.datetime]: a sorted list of all available reference times
+        """
+        reference_times = sorted(
+            {l[0] for l in self._fields.keys() if l[0] is not None}
+        )
+        return reference_times
+
+    def available_times(
+        self, reference_time: datetime.datetime = None
+    ) -> List[datetime.datetime]:
         """Returns a sorted list of all available times. Returns an empty list, if no time dimension is available.
+
+        Args:
+            reference_time (datetime.datetime): if given, only the times belonging to
+                that forecast run are returned
 
         Returns:
             List[datetime.datetime]: a sorted list of all available times
         """
-        times = sorted({l[0] for l in self._fields.keys() if l[0] is not None})
+        times = sorted(
+            {
+                l[1]
+                for l in self._fields.keys()
+                if l[1] is not None
+                and (
+                    reference_time is None
+                    or TimeDimension.equals(l[0], reference_time)
+                )
+            }
+        )
         return times
 
-    def available_elevations(self) -> List[int]:
+    def available_elevations(
+        self, reference_time: datetime.datetime = None
+    ) -> List[int]:
         """Return a sorted list of all available elevations. Returns an empty list, if no elevation dimension is available.
+
+        Args:
+            reference_time (datetime.datetime): if given, only the elevations belonging
+                to that forecast run are returned
 
         Returns:
             List[int]: a sorted list of all available elevations
         """
         elevations = sorted(
-            {str(l[1]) for l in self._fields.keys() if l[1] is not None}
+            {
+                str(l[2])
+                for l in self._fields.keys()
+                if l[2] is not None
+                and (
+                    reference_time is None
+                    or TimeDimension.equals(l[0], reference_time)
+                )
+            }
         )
         return elevations
+
+    def valid_elevations(
+        self, reference_time: datetime.datetime, time: datetime.datetime
+    ) -> set:
+        """Returns the set of elevations available for a given forecast run and
+            validity time. Unlike 'available_elevations' this keeps the elevations
+            as stored, i.e. as ints or None, so that they can be used to build a
+            field key.
+
+        Args:
+            reference_time (datetime.datetime): the forecast run
+            time (datetime.datetime): the validity time
+
+        Returns:
+            set: the elevations available for that combination
+        """
+        return {
+            l[2]
+            for l in self._fields.keys()
+            if TimeDimension.equals(l[0], reference_time)
+            and TimeDimension.equals(l[1], time)
+        }
 
     @property
     def group_dimensions(self) -> bool:
@@ -458,37 +648,6 @@ class DataLayer(Layer):
                     % (self, self.title, field.group_title)
                 )
 
-            # Cannot have a mix of None and Dates
-            assert (
-                field.time is None
-                and self._time_dimension_is_none
-                or (
-                    isinstance(field.time, datetime.datetime)
-                    and not self._time_dimension_is_none
-                    and field.time == field.time.astimezone(tz=datetime.timezone.utc)
-                )
-            )
-            assert field.levelist is None or isinstance(field.levelist, int)
-
-            if (field.time, field.levelist) in self._fields:
-                LOG.info(
-                    "Duplicate field (time: %s, elevation: %s) in %s (%s, %s)"
-                    % (
-                        field.time,
-                        field.levelist,
-                        self,
-                        field,
-                        self._fields[(field.time, field.levelist)],
-                    )
-                )
-
-                # # Why are we sometimes throwing this exception .. : need to be checked
-                # raise Exception(
-                #     "Duplicate date %s in %s (%s, %s)"
-                #     % (field.time, self, field, self._fields[field.time])
-                # )
-            self._fields[(field.time, field.levelist)] = field
-
         else:  # don't group levels
             assert self.name == field.name
 
@@ -498,37 +657,32 @@ class DataLayer(Layer):
                     % (self, self.title, field.title)
                 )
 
-            # Cannot have a mix of None and Dates
-            assert (
-                field.time is None
-                and self._time_dimension_is_none
-                or (
-                    isinstance(field.time, datetime.datetime)
-                    and not self._time_dimension_is_none
-                    and field.time == field.time.astimezone(tz=datetime.timezone.utc)
-                )
+        # Cannot have a mix of None and Dates
+        assert (
+            field.time is None
+            and self._time_dimension_is_none
+            or (
+                isinstance(field.time, datetime.datetime)
+                and not self._time_dimension_is_none
+                and field.time == field.time.astimezone(tz=datetime.timezone.utc)
             )
-            assert field.levelist is None or isinstance(field.levelist, int)
+        )
 
-            if (field.time, field.levelist) in self._fields:
-                LOG.info(
-                    "Duplicate field (time: %s, elevation: %s) in %s (%s, %s)"
-                    % (
-                        field.time,
-                        field.levelist,
-                        self,
-                        field,
-                        self._fields[(field.time, field.levelist)],
-                    )
-                )
+        key = self._key(field)
 
-                # # Why are we sometimes throwing this exception .. : need to be checked
-                # raise Exception(
-                #     "Duplicate date %s in %s (%s, %s)"
-                #     % (field.time, self, field, self._fields[field.time])
-                # )
+        if key in self._fields:
+            LOG.info(
+                "Duplicate field (reference time: %s, time: %s, elevation: %s) in %s (%s, %s)"
+                % (key[0], key[1], key[2], self, field, self._fields[key])
+            )
 
-            self._fields[(field.time, field.levelist)] = field
+            # # Why are we sometimes throwing this exception .. : need to be checked
+            # raise Exception(
+            #     "Duplicate date %s in %s (%s, %s)"
+            #     % (field.time, self, field, self._fields[field.time])
+            # )
+
+        self._fields[key] = field
 
     @property
     def fixed_layer(self) -> bool:
@@ -538,6 +692,12 @@ class DataLayer(Layer):
     def dimensions(self) -> List[Dimension]:
         dims = []
         if not self.fixed_layer:
+            reference_times = self.available_reference_times()
+            if len(reference_times) > 1:
+                # a single forecast run needs no dimension to select it, and
+                # advertising one would change the capabilities of every
+                # single-run dataset
+                dims.append(ReferenceTimeDimension(reference_times))
             times = self.available_times()
             if len(times) > 0:
                 dims.append(TimeDimension(times))
@@ -576,35 +736,64 @@ class DataLayer(Layer):
 
         time = dims.get("time", None)  # try get time string
         elevation = dims.get("elevation", None)  # try get elevation string
+        # try get reference time (forecast run) string
+        reference_time = dims.get("reference_time", None)
         LOG.info(
-            "Look up layer with %s and time %s (%s) and elevation %s (%s)"
-            % (self, time, type(time), elevation, type(elevation))
+            "Look up layer with %s and reference time %s (%s) and time %s (%s) and elevation %s (%s)"
+            % (
+                self,
+                reference_time,
+                type(reference_time),
+                time,
+                type(time),
+                elevation,
+                type(elevation),
+            )
         )
+
+        # the forecast run is selected first, every other dimension is then
+        # resolved within that run
+        if len(self.available_reference_times()) > 0:
+            if reference_time is not None:
+                reference_time = _parse_time(reference_time)
+            reference_time = self.select_nearest_available_reference_time(
+                reference_time
+            )
+        elif reference_time is not None:
+            # no reference time dimension was advertised for this layer, so
+            # there is nothing to select
+            LOG.info(
+                "Ignoring reference time %s, %s has no reference time dimension"
+                % (reference_time, self)
+            )
+            reference_time = None
 
         valid_elevations = {}
         if time is None:
-            time = self._first.time
-            valid_elevations = {self._first.levelist}
-        else:
-            # parse string date
-            try:
-                time = datetime.datetime.strptime(
-                    str(time)[:19], "%Y-%m-%dT%H:%M:%S"
-                ).replace(tzinfo=datetime.timezone.utc)
-            except:
-                time = parser.parse(str(time)[:19]).replace(
-                    tzinfo=datetime.timezone.utc
+            if reference_time is None or TimeDimension.equals(
+                self._first.reference_time, reference_time
+            ):
+                # keep to the historical default: the first field that was scanned
+                time = self._first.time
+                valid_elevations = {self._first.levelist}
+            else:
+                # default to the earliest validity time of the requested run
+                time = self.select_nearest_available_time(
+                    None, reference_time=reference_time
                 )
+                valid_elevations = self.valid_elevations(reference_time, time)
+        else:
+            time = _parse_time(time)
 
             # check if the given time exists
-            time = self.select_nearest_available_time(time)
-            valid_elevations = {
-                i[1] for i in self._fields.keys() if TimeDimension.equals(i[0], time)
-            }
+            time = self.select_nearest_available_time(
+                time, reference_time=reference_time
+            )
+            valid_elevations = self.valid_elevations(reference_time, time)
             if len(valid_elevations) < 1:
                 raise KeyError(
-                    "(%s,%s) TIME not found. Available combinations: %s"
-                    % (time, elevation, self._fields.keys())
+                    "(%s,%s,%s) TIME not found. Available combinations: %s"
+                    % (reference_time, time, elevation, self._fields.keys())
                 )
                 # selected time not found, fallback to a valid time
                 # time = self._first.time
@@ -618,13 +807,13 @@ class DataLayer(Layer):
             if elevation not in valid_elevations:
                 elevation = valid_elevations.pop()
 
-        if (time, elevation) not in self._fields.keys():
+        if (reference_time, time, elevation) not in self._fields.keys():
             raise KeyError(
-                "(%s,%s) not found. Available combinations: %s"
-                % (time, elevation, self._fields.keys())
+                "(%s,%s,%s) not found. Available combinations: %s"
+                % (reference_time, time, elevation, self._fields.keys())
             )
 
-        return self._fields[(time, elevation)]
+        return self._fields[(reference_time, time, elevation)]
 
     def as_dict(self):
         return dict(
@@ -636,13 +825,17 @@ class DataLayer(Layer):
 
 class Availability:
     def __init__(
-        self, auto_add_plotter_layers: bool = True, group_dimensions: bool = False
+        self,
+        auto_add_plotter_layers: bool = True,
+        group_dimensions: bool = False,
+        reference_time_dimension: bool = False,
     ):
         self._context = None
         self._layers: Dict[str, DataLayer] = {}
         self._aliases = {}
         self._auto_add_plotter_layers = auto_add_plotter_layers
         self._group_dimensions = group_dimensions
+        self._reference_time_dimension = reference_time_dimension
 
     @property
     def context(self) -> WMSServer:
@@ -661,6 +854,17 @@ class Availability:
         :rtype: bool
         """
         return self._group_dimensions
+
+    @property
+    def reference_time_dimension(self) -> bool:
+        """If set to 'True', fields are additionally keyed on the forecast reference
+        time, so that several forecast runs can be served from the same layer, and
+        layers holding more than one run advertise a 'reference_time' dimension.
+
+        :return: 'True' if the reference time dimension is enabled, else 'False'
+        :rtype: bool
+        """
+        return self._reference_time_dimension
 
     @property
     def auto_add_plotter_layers(self) -> bool:
@@ -687,7 +891,9 @@ class Availability:
                 self._layers[field.group_name].add_field(field)
             else:
                 self._layers[field.group_name] = DataLayer(
-                    field, group_dimensions=self.group_dimensions
+                    field,
+                    group_dimensions=self.group_dimensions,
+                    reference_time_dimension=self.reference_time_dimension,
                 )
         else:  # don't group dimensions
             if not self._layers:
@@ -699,7 +905,9 @@ class Availability:
                 self._layers[field.name].add_field(field)
             else:
                 self._layers[field.name] = DataLayer(
-                    field, group_dimensions=self.group_dimensions
+                    field,
+                    group_dimensions=self.group_dimensions,
+                    reference_time_dimension=self.reference_time_dimension,
                 )
 
     def layers(self):

@@ -54,6 +54,14 @@ class GRIBField(datatypes.Field):
             else grib.valid_date.astimezone(tz=datetime.timezone.utc)
         )
 
+        # the date/time at which the forecast was initialised, i.e. the forecast
+        # run this field belongs to. Grib base dates are always UTC.
+        self.reference_time = (
+            None
+            if not hasattr(grib, "base_date") or grib.base_date is None
+            else grib.base_date.replace(tzinfo=datetime.timezone.utc)
+        )
+
         if hasattr(grib, "levtype") and grib.levtype is not None:
             self.levtype = grib.levtype
             if self.levtype == "150":
@@ -137,7 +145,8 @@ class GRIBField(datatypes.Field):
         self._context = weakref.ref(context)
 
     def matches(self, other) -> bool:
-        """Check if companion has matching grib properties (filename, time, levtype and levelist).
+        """Check if companion has matching grib properties (filename, reference time,
+        time, levtype and levelist).
 
         :param companion: a grib field that can be used in combination to visualise self
         :type companion: GRIBField
@@ -148,6 +157,9 @@ class GRIBField(datatypes.Field):
             # TODO: matching up wind components from two different grib files is not supported in magics yet
             return False
         if self.time != other.time:
+            return False
+        if self.reference_time != other.reference_time:
+            # never pair up components from two different forecast runs
             return False
         if self.levtype != other.levtype:
             return False
@@ -288,6 +300,11 @@ class GRIBField(datatypes.Field):
             mars=self.mars,
             styles=[s.as_dict() for s in self.styles],
             time=self.time.isoformat() if self.time is not None else None,
+            reference_time=(
+                self.reference_time.isoformat()
+                if self.reference_time is not None
+                else None
+            ),
         )
 
     def __repr__(self) -> str:

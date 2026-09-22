@@ -191,6 +191,7 @@ class WMSServer:
         _macro=False,
         bgcolor=None,
         dim_index=None,
+        dim_reference_time=None,
         elevation=None,
         exceptions=None,
         time=None,
@@ -204,7 +205,12 @@ class WMSServer:
             styles.append("")
 
         # collect the dims, the fields selection is based on this information
-        dims = {"time": time, "elevation": elevation, "dim_index": dim_index}
+        dims = {
+            "time": time,
+            "elevation": elevation,
+            "dim_index": dim_index,
+            "reference_time": dim_reference_time,
+        }
 
         layer_objs = []
         for name in layers:
