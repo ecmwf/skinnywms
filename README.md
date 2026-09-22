@@ -138,6 +138,12 @@ grib_copy input_wind_u_component.grb2 input_wind_v_component.grib2 output_wind_u
 
 - The time and elevation dimension implementations follow [OGC Met Ocean DWG WMS 1.3 Best Practice for using Web Map Services (WMS) with Time-Dependent or Elevation-Dependent Data](https://external.ogc.org/twiki_public/MetOceanDWG/MetOceanWMSBPOnGoingDrafts). To enable dimension grouping (disabled by default) set the environment variable ``SKINNYWMS_ENABLE_DIMENSION_GROUPING=1``
 
+- By default the forecast reference time (the forecast run) is not a dimension: fields of different runs that share a validity time and elevation overwrite one another, so only one run can be served at a time. To serve several runs from the same layer, pass ``--enable-reference-time-dimension`` or set ``SKINNYWMS_ENABLE_REFERENCE_TIME_DIMENSION=1``. Layers then holding more than one run advertise a ``reference_time`` dimension, which clients select with the ``DIM_REFERENCE_TIME`` parameter, e.g.:
+```
+...&LAYERS=2t&DIM_REFERENCE_TIME=2019-01-01T00:00:00Z&TIME=2019-01-01T12:00:00Z
+```
+  The run defaults to the most recent one available. Note that WMS declares dimensions independently of one another, so the advertised ``time`` extent is the union over all runs; a validity time that a given run does not reach resolves to the nearest earlier time within that run.
+
 - development stage: **Alpha**,
 
 

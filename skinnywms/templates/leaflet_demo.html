@@ -96,6 +96,22 @@
       left: 10px;
       z-index: 1000;
     }
+    .leaflet-control-basedate {
+      background: #fff;
+      padding: 5px 7px;
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+      font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
+    }
+    .leaflet-control-basedate label {
+      display: block;
+      margin-bottom: 3px;
+      font-weight: bold;
+    }
+    .leaflet-control-basedate select {
+      font: inherit;
+      max-width: 220px;
+    }
   </style>
   <script>
       /* patch for leaflet time dimension bug, see https://github.com/socib/Leaflet.TimeDimension/issues/139 */
@@ -124,6 +140,73 @@
       function isTileable(code) {
           return code === 'EPSG:4326' || code === 'EPSG:3857';
       }
+
+      /* 'YYYY-MM-DD HHZ', which is how forecasters name a run */
+      let formatBaseDate = function(date) {
+          let iso = new Date(date).toISOString();
+          return iso.substring(0, 10) + ' ' + iso.substring(11, 13) + 'Z';
+      }
+
+      /* Lets the user pick which forecast run to look at, i.e. a value for the
+         reference_time dimension, sent as DIM_REFERENCE_TIME. Only shown when a
+         visible layer offers more than one run. */
+      let BaseDateControl = L.Control.extend({
+          options: {
+              position: 'topright',
+              onChange: function(value) {},
+          },
+
+          initialize: function(options) {
+              L.setOptions(this, options);
+              this._dates = [];
+              this._selected = null;
+          },
+
+          onAdd: function() {
+              this._container = L.DomUtil.create('div', 'leaflet-control-basedate');
+              let label = L.DomUtil.create('label', '', this._container);
+              label.innerHTML = 'Base date';
+              label.setAttribute('for', 'basedate-select');
+              this._select = L.DomUtil.create('select', '', this._container);
+              this._select.id = 'basedate-select';
+              /* the map must not pan or zoom while the dropdown is being used */
+              L.DomEvent.disableClickPropagation(this._container);
+              L.DomEvent.disableScrollPropagation(this._container);
+              L.DomEvent.on(this._select, 'change', function() {
+                  this._selected = this._select.value;
+                  this.options.onChange(this._selected);
+              }, this);
+              this._render();
+              return this._container;
+          },
+
+          /* dates are epoch milliseconds, as parseTimesExpression returns them,
+             selected is one of their ISO 8601 representations */
+          setDates: function(dates, selected) {
+              this._dates = dates;
+              this._selected = selected;
+              this._render();
+              return this;
+          },
+
+          getSelected: function() {
+              return this._selected;
+          },
+
+          _render: function() {
+              if (!this._container) {
+                  return;
+              }
+              this._select.innerHTML = '';
+              this._dates.forEach(function(date) {
+                  let option = L.DomUtil.create('option', '', this._select);
+                  option.value = new Date(date).toISOString();
+                  option.text = formatBaseDate(date);
+                  option.selected = (option.value === this._selected);
+              }, this);
+              this._container.style.display = this._dates.length > 1 ? '' : 'none';
+          },
+      });
 
       /* Root-level <CRS> + matching <BoundingBox CRS="..."> from GetCapabilities. */
       function parseCrsList($xml) {
@@ -208,6 +291,7 @@
       let layers = {};
       let legends = {};
       let layerMeta = {};
+      let baseDateControl = null;
 
       /* Snapshot of the interactive map right before it's torn down, so a
          projection switch can restore it afterwards instead of resetting the
@@ -228,6 +312,7 @@
               zoom: mymap.getZoom(),
               selectedLayerNames: selectedLayerNames,
               currentTime: mymap.timeDimension ? mymap.timeDimension.getCurrentTime() : null,
+              baseDate: baseDateControl ? baseDateControl.getSelected() : null,
           };
       }
 
@@ -351,6 +436,67 @@
             setTimeControlVisible(true);
           }
 
+          function applyBaseDate(value) {
+            Object.keys(layerMeta).forEach(function(label) {
+              let meta = layerMeta[label];
+              if (!meta.hasReferenceTimeDimension || !mymap.hasLayer(meta.layer)) {
+                return;
+              }
+              /* on a time dimension layer this also reaches the layers already
+                 cached for other times, and invalidates them */
+              meta.layer.setParams({DIM_REFERENCE_TIME: value});
+            });
+          }
+
+          function updateVisibleBaseDates() {
+            let mergedDates = [];
+            let defaultDate = null;
+
+            Object.keys(layerMeta).forEach(function(label) {
+              let meta = layerMeta[label];
+              if (!meta.hasReferenceTimeDimension || !mymap.hasLayer(meta.layer)) {
+                return;
+              }
+
+              let parsedDates = L.TimeDimension.Util.parseTimesExpression(
+                meta.referenceTimeExtent);
+              if (mergedDates.length === 0) {
+                mergedDates = parsedDates;
+              } else {
+                mergedDates = L.TimeDimension.Util.union_arrays(mergedDates, parsedDates);
+              }
+
+              if (defaultDate === null && meta.defaultReferenceTime) {
+                defaultDate = new Date(meta.defaultReferenceTime).toISOString();
+              }
+            });
+
+            let available = mergedDates.map(function(date) {
+              return new Date(date).toISOString();
+            });
+
+            if (available.length === 0) {
+              /* nothing to choose from yet: hide the control but hold on to the
+                 selection, so a layer toggled off and on again, or replayed by
+                 restoreMapState after a projection switch, keeps its run */
+              baseDateControl.setDates([], baseDateControl.getSelected());
+              return;
+            }
+
+            /* keep the run the user chose if the visible layers still offer it,
+               else fall back to the one the server advertises as default */
+            let selected = baseDateControl.getSelected();
+            if (available.indexOf(selected) < 0) {
+              selected = available.indexOf(defaultDate) >= 0 ?
+                defaultDate : available[available.length - 1];
+            }
+
+            baseDateControl.setDates(mergedDates, selected);
+            if (selected) {
+              applyBaseDate(selected);
+            }
+          }
+
           $xml.find('Layer').each(function() {
               let name = $(this).find('> Name').text();
               let title = $(this).find('> Title').text();
@@ -360,6 +506,11 @@
               let timeExtent = timeDimension.text();
               let defaultTime = timeDimension.attr('default');
               let hasTimeDimension = timeDimension.length > 0 && timeExtent != "";
+              let referenceTimeDimension = $(this).find('> Dimension[name="reference_time"]');
+              let referenceTimeExtent = referenceTimeDimension.text();
+              let defaultReferenceTime = referenceTimeDimension.attr('default');
+              let hasReferenceTimeDimension =
+                  referenceTimeDimension.length > 0 && referenceTimeExtent != "";
 
               if (name == "background" || name == "")
                   return;
@@ -388,6 +539,9 @@
                   hasTimeDimension: hasTimeDimension,
                   timeExtent: timeExtent,
                   defaultTime: defaultTime,
+                  hasReferenceTimeDimension: hasReferenceTimeDimension,
+                  referenceTimeExtent: referenceTimeExtent,
+                  defaultReferenceTime: defaultReferenceTime,
                   layer: overlayLayer,
               };
 
@@ -416,10 +570,23 @@
           L.control.layers(baseMaps, layers).addTo(mymap);
           setTimeControlVisible(false);
 
+          baseDateControl = new BaseDateControl({
+              onChange: applyBaseDate,
+          }).addTo(mymap);
+          /* seed the previous choice so the overlays replayed by
+             restoreMapState keep the run instead of resetting to the default */
+          if (savedState && savedState.baseDate) {
+              baseDateControl.setDates([], savedState.baseDate);
+          }
+          updateVisibleBaseDates();
+
           mymap.on('overlayadd', function(eventLayer) {
               let meta = layerMeta[eventLayer.name];
               if (meta && meta.hasTimeDimension) {
                 updateVisibleLayerTimes();
+              }
+              if (meta && meta.hasReferenceTimeDimension) {
+                updateVisibleBaseDates();
               }
               if (legends[eventLayer.name]){
                   legends[eventLayer.name].addTo(this);
@@ -430,6 +597,9 @@
               let meta = layerMeta[eventLayer.name];
               if (meta && meta.hasTimeDimension) {
                 updateVisibleLayerTimes();
+              }
+              if (meta && meta.hasReferenceTimeDimension) {
+                updateVisibleBaseDates();
               }
               if (legends[eventLayer.name]){
                   this.removeControl(legends[eventLayer.name]);
