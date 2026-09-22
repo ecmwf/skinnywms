@@ -2,16 +2,16 @@
 <html>
 <head>
   <link rel="icon" type="image/x-icon" href="static/img/favicon.ico">
-  <link rel="stylesheet" 
+  <link rel="stylesheet"
     href="static/css/leaflet-1.3.1.css"
     integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
     crossorigin=""/>
-  <link rel="stylesheet" 
-    href="static/css/leaflet.timedimension.control-1.1.0.min.css" 
+  <link rel="stylesheet"
+    href="static/css/leaflet.timedimension.control-1.1.0.min.css"
     integrity="sha512-XYq3haZyzXMyIeexNlcqH1RNTMdoOhgXnzKi29fGpTy0fgzlYVyy/x+cfkkPQSDY7LQG6mRAQAvcv3iC0IYxiA=="
     crossorigin=""/>
-  <link rel="stylesheet" 
-    href="static/css/leaflet-html-legend-0.3.4.css" 
+  <link rel="stylesheet"
+    href="static/css/leaflet-html-legend-0.3.4.css"
     integrity="sha512-qfcZaBG4c15buuUH0ewfe/2h1BVd4txcrhiJJxgJ5EXGP822ibCqpTsJFQyyQp4SEPgQ/Rpj+pLALRJXXVrH6w=="
     crossorigin=""/>
   <!-- Make sure you put this AFTER Leaflet's CSS -->
@@ -37,14 +37,37 @@
     crossorigin="anonymous"></script>
 </head>
 <body>
-  <div id="mapid"></div>
+  <div id="viewport">
+    <div id="mapid"></div>
+    <img id="staticmap" alt="Static WMS preview">
+    <div id="crs-control" class="crs-control crs-control-standalone">
+      <span>Projection:</span>
+      <select id="crs-select"></select>
+    </div>
+  </div>
   <style>
     html, body {
       height: 100%;
       margin: 0;
     }
-    #mapid {
+    #viewport {
+      position: relative;
+      width: 100%;
       height: 100%;
+    }
+    #mapid, #staticmap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    #staticmap {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #ccc;
     }
     .leaflet-html-legend {
       width: auto;
@@ -54,6 +77,24 @@
     div.legend img {
       width: 100%;
       background-color: gray;
+    }
+    .crs-control {
+      background: white;
+      padding: 4px 8px;
+      font: 12px/1.4 "Helvetica Neue", Arial, sans-serif;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      border-radius: 4px;
+    }
+    .crs-control select {
+      margin-left: 4px;
+    }
+    /* Only used while no Leaflet map is active (static CRS preview), since
+       Leaflet then has no top-left control container to stack us into. */
+    .crs-control.crs-control-standalone {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
     }
   </style>
   <script>
@@ -74,28 +115,204 @@
           return times;
       }
 
-      let mymap = L.map('mapid', {
-          center: [0, 0],
-          zoom: 2,
-          crs: L.CRS.EPSG4326,
-          timeDimension: true,
-          timeDimensionControl: true,
-      });
-      let background = L.tileLayer.wms('/wms?', {
-          layers: 'background',
-          format: 'image/png',
-          transparent: 'TRUE',
-          attribution: '',
-          version: '1.3.0'
-      }).addTo(mymap);
+      /* CRSs Leaflet can tile natively with a real global slippy-map grid.
+         Anything else GetCapabilities advertises (e.g. a polar stereographic or
+         Equal Earth) doesn't have a rectangular valid area that lines up with a
+         square tile grid, so it's rendered as a single static full-extent image
+         instead - no pan/zoom, but a correct one-shot look at what the WMS
+         backend (Magics) actually produces for that CRS. */
+      function isTileable(code) {
+          return code === 'EPSG:4326' || code === 'EPSG:3857';
+      }
 
-      fetch('/wms?request=GetCapabilities&service=WMS&version=1.3.0').then(function(response) {
-          return response.text();
-      }).then(function(text) {
-          let layers = {}
-          let legends = {}
-          let layerMeta = {}
-          let $xml = $($.parseXML(text));
+      /* Root-level <CRS> + matching <BoundingBox CRS="..."> from GetCapabilities. */
+      function parseCrsList($xml) {
+          let $rootLayer = $xml.find('Capability > Layer').first();
+          let crsList = [];
+          $rootLayer.find('> CRS').each(function() {
+              let code = $(this).text();
+              let $bbox = $rootLayer.find('> BoundingBox[CRS="' + code + '"]').first();
+              let bounds = null;
+              if ($bbox.length) {
+                  let minx = parseFloat($bbox.attr('minx'));
+                  let miny = parseFloat($bbox.attr('miny'));
+                  let maxx = parseFloat($bbox.attr('maxx'));
+                  let maxy = parseFloat($bbox.attr('maxy'));
+                  /* some advertised CRSs (e.g. the polar ones) report min > max */
+                  bounds = {
+                      minx: Math.min(minx, maxx),
+                      maxx: Math.max(minx, maxx),
+                      miny: Math.min(miny, maxy),
+                      maxy: Math.max(miny, maxy),
+                  };
+              }
+              crsList.push({code: code, bounds: bounds});
+          });
+          return crsList;
+      }
+
+      /* Non-background layer names advertised, used to build the single
+         combined image shown for non-tileable CRSs. */
+      function parseDataLayerNames($xml) {
+          let names = [];
+          $xml.find('Layer').each(function() {
+              let name = $(this).find('> Name').text();
+              if (name && name !== 'background') {
+                  names.push(name);
+              }
+          });
+          return names;
+      }
+
+      function populateCrsSelect(crsList, currentCode, onChange) {
+          let select = document.getElementById('crs-select');
+          select.innerHTML = '';
+          crsList.forEach(function(entry) {
+              let opt = document.createElement('option');
+              opt.value = entry.code;
+              if (!entry.bounds) {
+                  opt.disabled = true;
+                  opt.textContent = entry.code + ' (no bounding box)';
+              } else {
+                  opt.textContent = entry.code + (isTileable(entry.code) ? '' : ' (static preview)');
+              }
+              if (entry.code === currentCode) {
+                  opt.selected = true;
+              }
+              select.appendChild(opt);
+          });
+          select.onchange = function() {
+              onChange(select.value);
+          };
+      }
+
+      function showStaticPreview(crsCode, bounds, dataLayerNames) {
+          document.getElementById('mapid').style.display = 'none';
+          let img = document.getElementById('staticmap');
+          img.style.display = '';
+
+          let width = 800;
+          let aspect = (bounds.maxx - bounds.minx) / (bounds.maxy - bounds.miny);
+          let height = Math.max(1, Math.round(width / aspect));
+          let layers = ['background'].concat(dataLayerNames).join(',');
+          let bbox = [bounds.minx, bounds.miny, bounds.maxx, bounds.maxy].join(',');
+
+          img.src = '/wms?service=WMS&version=1.3.0&request=GetMap&format=image/png'
+              + '&transparent=TRUE&layers=' + encodeURIComponent(layers)
+              + '&crs=' + encodeURIComponent(crsCode)
+              + '&bbox=' + bbox
+              + '&width=' + width + '&height=' + height;
+      }
+
+      let mymap = null;
+      let layers = {};
+      let legends = {};
+      let layerMeta = {};
+
+      /* Snapshot of the interactive map right before it's torn down, so a
+         projection switch can restore it afterwards instead of resetting the
+         UI to its initial state. Only meaningful when mymap is an interactive
+         (tileable) map - a static preview has no per-layer selection. */
+      function captureMapState() {
+          if (!mymap) {
+              return null;
+          }
+          let selectedLayerNames = Object.keys(layerMeta).filter(function(label) {
+              return mymap.hasLayer(layerMeta[label].layer);
+          }).map(function(label) {
+              return layerMeta[label].name;
+          });
+
+          return {
+              center: mymap.getCenter(),
+              zoom: mymap.getZoom(),
+              selectedLayerNames: selectedLayerNames,
+              currentTime: mymap.timeDimension ? mymap.timeDimension.getCurrentTime() : null,
+          };
+      }
+
+      /* Re-selects the overlays that were visible before the switch. Fires
+         'overlayadd' manually (mirrors what L.Control.Layers does on a
+         checkbox click) since addLayer() alone doesn't raise it, and the
+         legend/time-dimension bookkeeping in buildInteractiveMap relies on it. */
+      function restoreMapState(savedState) {
+          if (!savedState || !savedState.selectedLayerNames.length) {
+              return;
+          }
+          Object.keys(layerMeta).forEach(function(label) {
+              let meta = layerMeta[label];
+              if (savedState.selectedLayerNames.indexOf(meta.name) !== -1) {
+                  mymap.addLayer(meta.layer);
+                  mymap.fire('overlayadd', { layer: meta.layer, name: label });
+              }
+          });
+          if (savedState.currentTime && mymap.timeDimension) {
+              mymap.timeDimension.setCurrentTime(savedState.currentTime);
+          }
+      }
+
+      /* Wraps the existing #crs-control div as a real Leaflet control so it
+         stacks below the zoom control automatically (same top-left corner,
+         Leaflet's own control spacing) instead of hand-placed pixel offsets.
+         mymap is torn down and rebuilt on every CRS switch, so the div is
+         moved back out to #viewport (see detachCrsControl) before that
+         happens rather than relying on Control.onRemove, which Leaflet's
+         Map.remove() does not reliably invoke. */
+      let CrsControl = L.Control.extend({
+          options: { position: 'topleft' },
+          onAdd: function() {
+              let el = document.getElementById('crs-control');
+              el.classList.remove('crs-control-standalone');
+              if (!el.dataset.propagationDisabled) {
+                  L.DomEvent.disableClickPropagation(el);
+                  L.DomEvent.disableScrollPropagation(el);
+                  el.dataset.propagationDisabled = 'true';
+              }
+              return el;
+          }
+      });
+
+      function detachCrsControl() {
+          let el = document.getElementById('crs-control');
+          if (el.parentElement && el.parentElement.id !== 'viewport') {
+              document.getElementById('viewport').appendChild(el);
+          }
+          el.classList.add('crs-control-standalone');
+      }
+
+      function buildInteractiveMap(crsCode, crsList, dataLayerNames, $xml, savedState) {
+          document.getElementById('staticmap').style.display = 'none';
+          document.getElementById('mapid').style.display = '';
+
+          if (mymap) {
+              mymap.remove();
+          }
+
+          mymap = L.map('mapid', {
+              center: savedState ? savedState.center : [0, 0],
+              zoom: savedState ? savedState.zoom : 2,
+              crs: crsCode === 'EPSG:3857' ? L.CRS.EPSG3857 : L.CRS.EPSG4326,
+              timeDimension: true,
+              timeDimensionControl: true,
+              zoomControl: false,
+          });
+
+          /* Added in this order so Leaflet stacks the zoom buttons below the
+             projection control within the shared top-left corner. */
+          new CrsControl().addTo(mymap);
+          L.control.zoom({ position: 'topleft' }).addTo(mymap);
+
+          let background = L.tileLayer.wms('/wms?', {
+              layers: 'background',
+              format: 'image/png',
+              transparent: 'TRUE',
+              attribution: '',
+              version: '1.3.0'
+          }).addTo(mymap);
+
+          layers = {};
+          legends = {};
+          layerMeta = {};
 
           function setTimeControlVisible(visible) {
             let control = document.querySelector('.leaflet-control-timecontrol');
@@ -197,7 +414,7 @@
               "background": background,
           };
           L.control.layers(baseMaps, layers).addTo(mymap);
-            setTimeControlVisible(false);
+          setTimeControlVisible(false);
 
           mymap.on('overlayadd', function(eventLayer) {
               let meta = layerMeta[eventLayer.name];
@@ -218,6 +435,47 @@
                   this.removeControl(legends[eventLayer.name]);
               }
           });
+
+          restoreMapState(savedState);
+      }
+
+      function switchCrs(crsCode, crsList, dataLayerNames, $xml) {
+          detachCrsControl();
+          let savedState = captureMapState();
+          if (mymap) {
+              mymap.remove();
+              mymap = null;
+          }
+
+          if (isTileable(crsCode)) {
+              buildInteractiveMap(crsCode, crsList, dataLayerNames, $xml, savedState);
+              return;
+          }
+
+          let entry = crsList.find(function(c) { return c.code === crsCode; });
+          if (!entry || !entry.bounds) {
+              alert('Projection ' + crsCode + ' has no usable bounding box and cannot be previewed.');
+              return;
+          }
+          showStaticPreview(crsCode, entry.bounds, dataLayerNames);
+      }
+
+      fetch('/wms?request=GetCapabilities&service=WMS&version=1.3.0').then(function(response) {
+          return response.text();
+      }).then(function(text) {
+          let $xml = $($.parseXML(text));
+          /* Magics currently rejects GetMap requests for every advertised CRS
+             that isn't natively tileable (each for a different reason), so
+             hide those from the dropdown for now rather than offer a preview
+             that's known to fail. */
+          let crsList = parseCrsList($xml).filter(function(entry) { return isTileable(entry.code); });
+          let dataLayerNames = parseDataLayerNames($xml);
+          let defaultCode = 'EPSG:4326';
+
+          populateCrsSelect(crsList, defaultCode, function(newCode) {
+              switchCrs(newCode, crsList, dataLayerNames, $xml);
+          });
+          switchCrs(defaultCode, crsList, dataLayerNames, $xml);
       });
   </script>
 </body>
