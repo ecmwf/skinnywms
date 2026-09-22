@@ -144,6 +144,14 @@ def _build_parser():
     )
 
     parser.add_argument(
+        "--enable-reference-time-dimension",
+        action="store_true",
+        help="Serve several forecast runs from the same layer, selectable with the\
+                         DIM_REFERENCE_TIME parameter. Without this, fields of different\
+                         runs sharing a validity time overwrite one another.",
+    )
+
+    parser.add_argument(
         "--dark-mode",
         action="store_true",
         default=False,
@@ -186,6 +194,9 @@ def _apply_args(args):
     dark_mode_enabled = _env_bool("SKINNYWMS_DARK_MODE")
     omit_default_layers = _env_bool("SKINNYWMS_OMIT_DEFAULT_LAYERS")
     enable_dimension_grouping = _env_bool("SKINNYWMS_ENABLE_DIMENSION_GROUPING")
+    enable_reference_time_dimension = _env_bool(
+        "SKINNYWMS_ENABLE_REFERENCE_TIME_DIMENSION"
+    )
     origins = _env_origins()
 
     if args.style != "":
@@ -217,9 +228,16 @@ def _apply_args(args):
         LOG.info("CORS enabled for all endpoints. Allowed origins: %s", origins)
 
     group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
+    reference_time_dimension = (
+        args.enable_reference_time_dimension or enable_reference_time_dimension
+    )
 
     server = WMSServer(
-        Availability(args.path, group_dimensions=group_dimensions),
+        Availability(
+            args.path,
+            group_dimensions=group_dimensions,
+            reference_time_dimension=reference_time_dimension,
+        ),
         Plotter(
             args.baselayer,
             dark_mode=dark_mode_enabled,
