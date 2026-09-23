@@ -43,7 +43,7 @@ class GeoJSONField(datatypes.Field):
         self.title = name
         self.group_name = name
         self.group_title = name
-        self.styles = [name]
+        self.styles = [datatypes.Style(name)]
 
     def render(self, context: WMSServer, driver, style, legend={}):
         data = []
@@ -59,7 +59,8 @@ class GeoJSONField(datatypes.Field):
             )
         )
 
-        data.append(context.styler.symbol(self, driver, style, legend))
+        style_name = style.name if hasattr(style, "name") else style
+        data.append(context.styler.symbol(self, driver, style_name, legend))
 
         return data
 
