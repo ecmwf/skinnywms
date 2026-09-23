@@ -8,4 +8,9 @@ hooks*
 Makefile
 docker-compose.yml
 venv*
+testdata-metno
+testdata-metview
+build
+dist
+tmp
 

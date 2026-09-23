@@ -268,7 +268,7 @@ class WMSServer:
         try:
             legend = self.availability.layer(layer, time)
         except errors.LayerNotDefined:
-            legend = self.plotter.layer
+            legend = self.plotter.layer(layer, time)
 
         path = self.plotter.legend(
             self,

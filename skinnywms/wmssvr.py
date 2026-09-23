@@ -268,7 +268,6 @@ def wms():
         Response=Response,
         send_file=send_file,
         render_template=render_template,
-        reraise=True,
     )
 
 

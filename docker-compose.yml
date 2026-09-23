@@ -1,18 +1,17 @@
 services:
   skinnywms:
-    platform: linux/amd64
     build:
       context: ./
       dockerfile: Dockerfile
       args:
-        - PYTHON_IMAGE=python:3.14-slim-bookworm
-        # - ECMWFLIBS_WHEEL=ecmwflibs-0.7.0-cp314-cp314-manylinux_2_28_x86_64.whl
+        - PYTHON_IMAGE=python:3.14-slim-trixie
         - http_proxy
         - https_proxy
         - no_proxy
     volumes:
       - ".:/app/skinnywms:ro"
       - "./skinnywms/testdata:/data:ro"
+      # - "./testdata-metno:/data:ro"
     restart: always
     ports:
       - 5000:5000
