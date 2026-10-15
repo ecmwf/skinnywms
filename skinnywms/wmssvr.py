@@ -10,7 +10,6 @@ import argparse
 import logging
 import os
 
-from . import __version__
 from flask import (
     Flask,
     Response,
@@ -22,7 +21,9 @@ from flask import (
     send_from_directory,
 )
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
+from . import __version__
 from .data.fs import Availability
 from .plot.magics import Plotter, Styler
 from .server import WMSServer
@@ -172,6 +173,16 @@ def _build_parser():
     )
 
     parser.add_argument(
+        "--trust-x-forwarded",
+        action="store_true",
+        default=False,
+        help="Trust the X-Forwarded-Proto/-Host/-Prefix headers (exactly one proxy hop) when\
+                         building public URLs in responses. Also enabled by SKINNYWMS_TRUST_XFORWARDED=1.\
+                         Only enable this if the server is reachable exclusively through a proxy\
+                         which sanitizes these headers.",
+    )
+
+    parser.add_argument(
         "--static-path",
         default=_env_static_path(),
         help="Path to static assets directory served at /static. Defaults to SKINNYWMS_STATIC_PATH or packaged assets when available.",
@@ -188,6 +199,21 @@ def _build_parser():
 
 def _parse_args(argv=None):
     return _build_parser().parse_args(argv)
+
+
+def _enable_proxy_fix():
+    """Make Flask honour X-Forwarded-Proto/-Host/-Prefix from a single trusted proxy."""
+    if isinstance(application.wsgi_app, ProxyFix):
+        return  # already wrapped, _apply_args may run more than once
+    application.wsgi_app = ProxyFix(
+        application.wsgi_app, x_for=0, x_proto=1, x_host=1, x_port=0, x_prefix=1
+    )
+    LOG.info("Trusting X-Forwarded-Proto/-Host/-Prefix headers of a single proxy")
+
+
+def _public_base_url():
+    """Origin plus mount prefix, without trailing slash, as seen by the client."""
+    return request.host_url.rstrip("/") + request.script_root
 
 
 def _apply_args(args):
@@ -218,7 +244,9 @@ def _apply_args(args):
     if static_path != "":
         static_path = os.path.abspath(os.path.expanduser(static_path))
         if not os.path.isdir(static_path):
-            LOG.warning("Static path does not exist or is not a directory: %s", static_path)
+            LOG.warning(
+                "Static path does not exist or is not a directory: %s", static_path
+            )
             static_path = ""
     application.config["SKINNYWMS_STATIC_PATH"] = static_path
 
@@ -226,6 +254,9 @@ def _apply_args(args):
         # Enable CORS for all endpoints
         CORS(application, resources={r"/*": {"origins": origins}})
         LOG.info("CORS enabled for all endpoints. Allowed origins: %s", origins)
+
+    if args.trust_x_forwarded or _env_bool("SKINNYWMS_TRUST_XFORWARDED"):
+        _enable_proxy_fix()
 
     group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
     reference_time_dimension = (
@@ -268,6 +299,7 @@ def wms():
         Response=Response,
         send_file=send_file,
         render_template=render_template,
+        base_url=_public_base_url(),
     )
 
 

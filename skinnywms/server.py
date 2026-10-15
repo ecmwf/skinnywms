@@ -15,6 +15,7 @@ import logging
 import os
 import tempfile
 import threading
+from xml.sax.saxutils import escape
 
 from skinnywms import errors, protocol
 
@@ -25,6 +26,11 @@ def revert_bbox(bbox):
     minx, miny, maxx, maxy = bbox
     return [miny, minx, maxy, maxx]
 
+
+#: Stands in for the public base URL (origin + mount prefix) in cached
+#: capabilities documents; substituted per request, so that the cache does not
+#: depend on the (client-controlled) host.
+BASE_URL_PLACEHOLDER = "@@SKINNYWMS_BASE_URL@@"
 
 bounding_box = {"1.3.0_EPSG:4326": revert_bbox}
 
@@ -61,6 +67,11 @@ class NoCaching:
         return TmpFile()
 
 
+def _escape_attr_content(value):
+    """Escape for use inside a double-quoted XML attribute."""
+    return escape(value, {'"': "&quot;"})
+
+
 class WMSServer:
     def __init__(
         self,
@@ -88,10 +99,23 @@ class WMSServer:
         self.stash = {}
 
     def process(
-        self, request, Response, send_file, render_template, reraise=False, output=None
+        self,
+        request,
+        Response,
+        send_file,
+        render_template,
+        reraise=False,
+        output=None,
+        base_url=None,
     ):
+        """`base_url` is the public origin plus mount prefix (no trailing
+        slash) under which the server is reachable by the client. If not
+        given, it is derived from the request as seen by this process."""
 
-        url = request.url.split("?")[0]
+        path = request.path
+        if base_url is None:
+            base_url = request.host_url.rstrip("/") + request.script_root
+        base_url = base_url.rstrip("/")
 
         LOG.info(request.url)
 
@@ -118,7 +142,10 @@ class WMSServer:
 
             if req == "getcapabilities":
                 content_type, content = self.get_capabilities(
-                    version, url, render_template
+                    version, path, render_template
+                )
+                content = content.replace(
+                    BASE_URL_PLACEHOLDER, _escape_attr_content(base_url)
                 )
             elif req == "getmap":
                 params = protocol.get_wms_parameters(req, version, params)
@@ -223,8 +250,7 @@ class WMSServer:
 
         # Interpret the BBox
 
-        bbox = bounding_box.get("{}_{}".format(
-            version, crs), (lambda x: x))(bbox)
+        bbox = bounding_box.get("{}_{}".format(version, crs), (lambda x: x))(bbox)
 
         LOG.debug("->{}_{}".format(version, crs))
 
@@ -285,9 +311,11 @@ class WMSServer:
 
         return format, path
 
-    def get_capabilities(self, version, service_url, render_template):
+    def get_capabilities(self, version, service_path, render_template):
+        """Returns the capabilities with BASE_URL_PLACEHOLDER in place of the
+        public base URL; the caller substitutes it."""
 
-        cache_key = (version, service_url)
+        cache_key = (version, service_path)
         with self._capabilities_cache_lock:
             cached = self._capabilities_cache.get(cache_key)
         if cached is not None:
@@ -306,7 +334,7 @@ class WMSServer:
         variables = {
             "service": {
                 "title": "WMS",
-                "url": service_url,
+                "url": BASE_URL_PLACEHOLDER + service_path,
             },
             "crss": self.plotter.supported_crss,
             "geographic_bounding_box": self.plotter.geographic_bounding_box,
@@ -314,8 +342,7 @@ class WMSServer:
         }
 
         content_type = "text/xml"
-        content = render_template(
-            "getcapabilities_{}.xml".format(version), **variables)
+        content = render_template("getcapabilities_{}.xml".format(version), **variables)
 
         with self._capabilities_cache_lock:
             self._capabilities_cache[cache_key] = content
