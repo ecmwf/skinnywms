@@ -53,19 +53,16 @@ export SKINNYWMS_SERVER=gunicorn  # or flask
 
 URLs advertised in responses (e.g. the `OnlineResource` entries in `GetCapabilities`)
 are, by default, built from the request as this server sees it. Behind a reverse
-proxy this yields internal addresses. If your proxy sets `X-Forwarded-Proto`,
-`X-Forwarded-Host` and (when it mounts skinnywms under a sub-path, stripping it
-before forwarding) `X-Forwarded-Prefix`, enable honouring them with:
+proxy this yields internal addresses. Set the externally visible base URL of the server,
+including the path prefix if the proxy mounts skinnywms under a sub-path (the proxy is
+expected to strip that prefix before forwarding):
 
 ```bash
-export SKINNYWMS_TRUST_XFORWARDED=1  # or --trust-x-forwarded
+export SKINNYWMS_PUBLIC_URL=https://example.com/skinny  # or --public-url
 ```
 
-Exactly one proxy hop is trusted, and the headers are taken at face value: only enable
-this if skinnywms is reachable solely through a proxy that overwrites these headers
-(an nginx example: `proxy_set_header X-Forwarded-Proto $scheme;
-proxy_set_header X-Forwarded-Host $http_host; proxy_set_header X-Forwarded-Prefix /skinny;`).
-The `Forwarded` header (RFC 7239) is not supported.
+The demo page and all URLs in responses then use this location, regardless of the
+`Host` of the incoming request.
 
 To explicitly serve static assets from a custom location (mounted volume, local checkout, etc.):
 
