@@ -9,6 +9,7 @@
 import argparse
 import logging
 import os
+from urllib.parse import urlsplit
 
 from flask import (
     Flask,
@@ -176,10 +177,16 @@ def _build_parser():
         "--trust-x-forwarded",
         action="store_true",
         default=False,
-        help="Trust the X-Forwarded-Proto/-Host/-Prefix headers (exactly one proxy hop) when\
-                         building public URLs in responses. Also enabled by SKINNYWMS_TRUST_XFORWARDED=1.\
-                         Only enable this if the server is reachable exclusively through a proxy\
-                         which sanitizes these headers.",
+        help=argparse.SUPPRESS,  # deliberately undocumented, see SKINNYWMS_TRUST_XFORWARDED
+    )
+
+    parser.add_argument(
+        "--public-url",
+        default="",
+        help="Externally visible base URL of this server (scheme, host and optional path prefix),\
+                         e.g. https://example.com/skinny, used for URLs in responses such as\
+                         GetCapabilities. Defaults to SKINNYWMS_PUBLIC_URL. If not specified, the URL is\
+                         derived from the incoming request.",
     )
 
     parser.add_argument(
@@ -201,6 +208,50 @@ def _parse_args(argv=None):
     return _build_parser().parse_args(argv)
 
 
+class _PublicUrlMiddleware:
+    """Pins scheme, host and mount prefix of every request to a configured public URL.
+
+    The prefix is expected to be stripped by whatever sits in front of this
+    server, i.e. PATH_INFO is left untouched and the prefix goes to SCRIPT_NAME.
+    """
+
+    def __init__(self, app, public_url):
+        self.app = app
+        parts = urlsplit(public_url)
+        self.scheme = parts.scheme
+        self.host = parts.netloc
+        self.prefix = parts.path.rstrip("/")
+
+    def __call__(self, environ, start_response):
+        environ["wsgi.url_scheme"] = self.scheme
+        environ["HTTP_HOST"] = self.host
+        environ["SCRIPT_NAME"] = self.prefix
+        return self.app(environ, start_response)
+
+
+def _validate_public_url(value):
+    """Returns the normalized (no trailing slash) public URL, or raises ValueError."""
+    parts = urlsplit(value)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        raise ValueError(
+            f"Invalid public URL {value!r}: expected http(s)://host[:port][/prefix]"
+        )
+    if parts.query or parts.fragment:
+        raise ValueError(f"Invalid public URL {value!r}: query/fragment not allowed")
+    return value.rstrip("/")
+
+
+def _enable_public_url(public_url):
+    """Make Flask treat `public_url` as the externally visible location of this server."""
+    public_url = _validate_public_url(public_url)
+    wsgi_app = application.wsgi_app
+    if isinstance(wsgi_app, _PublicUrlMiddleware):
+        wsgi_app = wsgi_app.app  # _apply_args may run more than once
+    application.wsgi_app = _PublicUrlMiddleware(wsgi_app, public_url)
+    application.config["SKINNYWMS_PUBLIC_URL"] = public_url
+    LOG.info("Public URL is %s", public_url)
+
+
 def _enable_proxy_fix():
     """Make Flask honour X-Forwarded-Proto/-Host/-Prefix from a single trusted proxy."""
     if isinstance(application.wsgi_app, ProxyFix):
@@ -213,6 +264,9 @@ def _enable_proxy_fix():
 
 def _public_base_url():
     """Origin plus mount prefix, without trailing slash, as seen by the client."""
+    configured = application.config.get("SKINNYWMS_PUBLIC_URL")
+    if configured:
+        return configured
     return request.host_url.rstrip("/") + request.script_root
 
 
@@ -255,7 +309,18 @@ def _apply_args(args):
         CORS(application, resources={r"/*": {"origins": origins}})
         LOG.info("CORS enabled for all endpoints. Allowed origins: %s", origins)
 
-    if args.trust_x_forwarded or _env_bool("SKINNYWMS_TRUST_XFORWARDED"):
+    trust_x_forwarded = args.trust_x_forwarded or _env_bool(
+        "SKINNYWMS_TRUST_XFORWARDED"
+    )
+    public_url = args.public_url or os.environ.get("SKINNYWMS_PUBLIC_URL", "").strip()
+    if trust_x_forwarded and public_url:
+        raise RuntimeError(
+            "SKINNYWMS_PUBLIC_URL / --public-url cannot be combined with "
+            "SKINNYWMS_TRUST_XFORWARDED / --trust-x-forwarded"
+        )
+    if public_url:
+        _enable_public_url(public_url)
+    elif trust_x_forwarded:
         _enable_proxy_fix()
 
     group_dimensions = args.enable_dimension_grouping or enable_dimension_grouping
@@ -352,5 +417,10 @@ def execute():
         def load(self):
             return self.application
 
-    LOG.info("Starting gunicorn on %s with %s workers x %s threads", bind, args.gunicorn_workers, args.gunicorn_threads)
+    LOG.info(
+        "Starting gunicorn on %s with %s workers x %s threads",
+        bind,
+        args.gunicorn_workers,
+        args.gunicorn_threads,
+    )
     SkinnyGunicornApplication(application, options).run()

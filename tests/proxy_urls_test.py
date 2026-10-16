@@ -6,8 +6,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-"""Tests that public URLs in responses honour X-Forwarded-* headers, if and
-only if SKINNYWMS_TRUST_XFORWARDED is enabled."""
+"""Tests that public URLs in responses honour SKINNYWMS_PUBLIC_URL, or, if
+SKINNYWMS_TRUST_XFORWARDED is enabled, X-Forwarded-* headers; and that the
+two cannot be combined."""
 
 import re
 
@@ -29,14 +30,18 @@ def make_client():
     """Yields a factory for test clients, with the app restored afterwards."""
     original = wmssvr.application.wsgi_app
 
-    def factory(trust):
+    def factory(trust, public_url=None):
         wmssvr.application.wsgi_app = original
+        wmssvr.application.config.pop("SKINNYWMS_PUBLIC_URL", None)
         if trust:
             wmssvr._enable_proxy_fix()
+        if public_url:
+            wmssvr._enable_public_url(public_url)
         return wmssvr.application.test_client()
 
     yield factory
     wmssvr.application.wsgi_app = original
+    wmssvr.application.config.pop("SKINNYWMS_PUBLIC_URL", None)
 
 
 def hrefs(body):
@@ -124,3 +129,76 @@ def test_proxy_fix_not_applied_twice(make_client):
     inner = wmssvr.application.wsgi_app
     wmssvr._enable_proxy_fix()
     assert wmssvr.application.wsgi_app is inner
+
+
+PINNED = "https://pinned.example.org/skinny"
+
+
+@pytest.mark.parametrize("version", ["1.1.1", "1.3.0"])
+@pytest.mark.parametrize("headers", [{}, FORWARDED, {"Host": "evil.example"}])
+def test_public_url_is_used(make_client, version, headers):
+    body = capabilities(make_client(False, PINNED), version, headers)
+    found = service_hrefs(body)
+    assert len(found) >= 3
+    assert all(h.startswith(PINNED + "/wms") for h in found), found
+    assert BASE_URL_PLACEHOLDER not in body
+    assert "evil.example" not in body and "example.com" not in body
+
+
+def test_public_url_trailing_slash_and_no_prefix(make_client):
+    body = capabilities(make_client(False, "http://h.org:81/"), "1.3.0")
+    assert all(h.startswith("http://h.org:81/wms") for h in service_hrefs(body))
+
+
+def test_public_url_demo_page(make_client):
+    page = make_client(False, PINNED).get("/", headers=FORWARDED).get_data(as_text=True)
+    assert 'const WMS_URL = "/skinny/wms"' in page
+    assert "/skinny/static/js/leaflet-1.3.1.js" in page
+
+
+def test_public_url_enabled_twice_not_stacked(make_client):
+    make_client(False, PINNED)
+    wmssvr._enable_public_url("https://other.example.org/x")
+    body = capabilities(wmssvr.application.test_client(), "1.3.0")
+    assert all(
+        h.startswith("https://other.example.org/x/wms") for h in service_hrefs(body)
+    )
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "example.com/x",
+        "ftp://example.com",
+        "http://",
+        "https://e.com/x?a=b",
+        "https://e.com/#f",
+    ],
+)
+def test_invalid_public_url_rejected(bad):
+    with pytest.raises(ValueError):
+        wmssvr._validate_public_url(bad)
+
+
+def test_public_url_and_trust_conflict_crashes(monkeypatch):
+    monkeypatch.setenv("SKINNYWMS_PUBLIC_URL", PINNED)
+    monkeypatch.setenv("SKINNYWMS_TRUST_XFORWARDED", "1")
+    with pytest.raises(RuntimeError, match="cannot be combined"):
+        wmssvr._apply_args(wmssvr._parse_args([]))
+
+
+def test_public_url_and_trust_conflict_crashes_cli(monkeypatch):
+    monkeypatch.delenv("SKINNYWMS_PUBLIC_URL", raising=False)
+    monkeypatch.delenv("SKINNYWMS_TRUST_XFORWARDED", raising=False)
+    args = wmssvr._parse_args(["--public-url", PINNED, "--trust-x-forwarded"])
+    with pytest.raises(RuntimeError, match="cannot be combined"):
+        wmssvr._apply_args(args)
+
+
+def test_public_url_from_env_applied(monkeypatch, make_client):
+    make_client(False)  # restores state afterwards
+    monkeypatch.setenv("SKINNYWMS_PUBLIC_URL", PINNED)
+    monkeypatch.delenv("SKINNYWMS_TRUST_XFORWARDED", raising=False)
+    wmssvr._apply_args(wmssvr._parse_args([]))
+    body = capabilities(wmssvr.application.test_client(), "1.3.0")
+    assert all(h.startswith(PINNED + "/wms") for h in service_hrefs(body))
